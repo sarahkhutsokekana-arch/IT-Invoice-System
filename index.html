@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Protocol Pay | Admin Dashboard</title>
+    <title>AuraBill | Admin Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <script>
-        // Initialize EmailJS with your Public Key
         (function() {
             emailjs.init("YOUR_PUBLIC_KEY"); // Replace with your EmailJS Public Key
         })();
@@ -92,7 +91,6 @@
     </div>
 
     <script>
-        // --- FIREBASE INITIALIZATION ---
         const firebaseConfig = {
             apiKey: "AIzaSyAxBT0oESoL62oz_x_Z8cMtdENWZPx4tMI",
             authDomain: "pinotp-d7ef5.firebaseapp.com",
@@ -106,12 +104,10 @@
         const db = firebase.database();
         let allInvoices = [];
 
-        // --- PDF GENERATION & EMAIL LOGIC ---
         async function processInvoiceAndEmail(data) {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
             
-            // Generate Invoice Content
             doc.setFont("helvetica", "bold");
             doc.text("AURABILL INVOICE", 20, 30);
             doc.setFont("helvetica", "normal");
@@ -123,24 +119,21 @@
             doc.text("SERVICE:", 20, 100);
             doc.text(`${data.serviceDesc}: R ${parseFloat(data.amount).toFixed(2)}`, 20, 107);
             
-            // Download for Admin
             doc.save(`Invoice_${data.id}.pdf`);
 
-            // Convert to Base64 for EmailJS
-            const pdfBase64 = doc.output('datauristring');
+            const pdfBase64 = doc.output('datauristring').split(',')[1];
 
-            // Send via EmailJS
             const templateParams = {
+                to_email: data.clientEmail,
                 client_name: data.clientName,
-                client_email: data.clientEmail,
                 invoice_id: data.id,
-                content: pdfBase64 // This attaches the file if template is set up correctly
+                amount: data.amount,
+                content: pdfBase64
             };
 
             return emailjs.send('YOUR_SERVICE_ID', 'YOUR_TEMPLATE_ID', templateParams);
         }
 
-        // --- FORM SUBMISSION ---
         document.getElementById('invoiceForm').addEventListener('submit', (e) => {
             e.preventDefault();
             const statusMsg = document.getElementById('statusMsg');
@@ -169,13 +162,13 @@
                 } else {
                     try {
                         await processInvoiceAndEmail(data);
-                        statusMsg.textContent = "Saved, Downloaded & Emailed!";
+                        statusMsg.textContent = "Invoice successfully sent to client!";
                         statusMsg.className = "mt-4 text-center text-sm text-emerald-500";
                         document.getElementById('invoiceForm').reset();
                     } catch (err) {
-                        statusMsg.textContent = "Saved & Downloaded, but Email failed.";
-                        statusMsg.className = "mt-4 text-center text-sm text-amber-500";
-                        console.error(err);
+                        statusMsg.textContent = "Email failed. Verify EmailJS settings.";
+                        statusMsg.className = "mt-4 text-center text-sm text-red-500";
+                        console.error("EmailJS Error:", err);
                     } finally {
                         submitBtn.disabled = false;
                     }
@@ -183,7 +176,6 @@
             });
         });
 
-        // Dashboard Data Loading (unchanged)
         db.ref('invoices').on('value', (snapshot) => {
             allInvoices = [];
             let totalRev = 0, pendingBal = 0;
