@@ -30,6 +30,21 @@
         </button>
     </div>
 
+    <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="bg-slate-50 dark:bg-slate-800/80 p-6 rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-lg">
+            <p class="text-slate-500 dark:text-slate-400 text-sm font-medium">Total Revenue</p>
+            <h3 id="totalRevenue" class="text-2xl font-bold text-slate-900 dark:text-white mt-1">$0.00</h3>
+        </div>
+        <div class="bg-slate-50 dark:bg-slate-800/80 p-6 rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-lg">
+            <p class="text-slate-500 dark:text-slate-400 text-sm font-medium">Pending Balance</p>
+            <h3 id="pendingBalance" class="text-2xl font-bold text-amber-600 dark:text-amber-400 mt-1">$0.00</h3>
+        </div>
+        <div class="bg-slate-50 dark:bg-slate-800/80 p-6 rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-lg">
+            <p class="text-slate-500 dark:text-slate-400 text-sm font-medium">Invoice Count</p>
+            <h3 id="invoiceCount" class="text-2xl font-bold text-cyan-600 dark:text-cyan-400 mt-1">0</h3>
+        </div>
+    </div>
+
     <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         <div class="bg-slate-50 dark:bg-slate-800/80 backdrop-blur-xl p-8 rounded-2xl shadow-xl dark:shadow-2xl border border-slate-200 dark:border-slate-700/50 lg:col-span-1 h-fit">
@@ -51,7 +66,14 @@
         </div>
 
         <div class="bg-slate-50 dark:bg-slate-800/80 backdrop-blur-xl p-8 rounded-2xl shadow-xl dark:shadow-2xl border border-slate-200 dark:border-slate-700/50 lg:col-span-2">
-            <h2 class="text-xl font-semibold mb-6 text-slate-800 dark:text-white">Recent Invoices</h2>
+            <div class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+                <h2 class="text-xl font-semibold text-slate-800 dark:text-white">Recent Invoices</h2>
+                <div class="relative w-full md:w-64">
+                    <input type="text" id="searchInput" placeholder="Search invoices..." class="w-full bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600 rounded-lg py-2 pl-10 pr-4 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-cyan-500 outline-none transition-all">
+                    <svg class="absolute left-3 top-2.5 h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </div>
+            </div>
+
             <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700/50">
                 <table class="w-full text-left border-collapse">
                     <thead class="bg-slate-100 dark:bg-slate-900/80 text-slate-600 dark:text-slate-300 text-sm">
@@ -64,7 +86,7 @@
                         </tr>
                     </thead>
                     <tbody id="invoiceTableBody" class="divide-y divide-slate-200 dark:divide-slate-700/50">
-                        </tbody>
+                    </tbody>
                 </table>
             </div>
             <div id="emptyState" class="hidden text-center py-12 text-slate-500 italic">
@@ -75,6 +97,8 @@
     </div>
 
     <script>
+        let allInvoices = []; // Store fetched data for filtering
+
         // --- THEME LOGIC ---
         function toggleTheme() {
             const body = document.body;
@@ -90,7 +114,6 @@
             }
         }
 
-        // Apply saved theme
         if (localStorage.getItem('theme') === 'light') {
             document.body.classList.remove('dark');
             document.getElementById('themeIcon').textContent = '☀️';
@@ -100,18 +123,14 @@
         async function togglePaid(id, currentStatus) {
             const newStatus = currentStatus === 'Paid' ? 'Sent' : 'Paid';
             try {
-                // Assuming your backend has a PUT endpoint for status updates
-                const res = await fetch(`http://localhost:3000/api/invoices/${id}/status`, {
+                await fetch(`http://localhost:3000/api/invoices/${id}/status`, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ status: newStatus })
                 });
-                
-                // If backend isn't updated yet, we reload anyway to show the local refresh
                 loadDashboardData();
             } catch (err) {
                 console.error("Failed to update status");
-                // For demo/offline:
                 loadDashboardData(); 
             }
         }
@@ -161,16 +180,63 @@
         // --- DELETE LOGIC ---
         async function deleteInvoice(id) {
             if (!confirm(`Are you sure you want to delete ${id}?`)) return;
-
             try {
-                const res = await fetch(`http://localhost:3000/api/invoices/${id}`, {
-                    method: 'DELETE'
-                });
-                if (res.ok) {
-                    loadDashboardData();
-                }
+                const res = await fetch(`http://localhost:3000/api/invoices/${id}`, { method: 'DELETE' });
+                if (res.ok) loadDashboardData();
             } catch (err) {
                 alert("Could not connect to server to delete.");
+            }
+        }
+
+        // --- SEARCH LOGIC ---
+        document.getElementById('searchInput').addEventListener('input', () => {
+            renderTable(document.getElementById('searchInput').value);
+        });
+
+        // --- RENDER TABLE ---
+        function renderTable(searchTerm = "") {
+            const tbody = document.getElementById('invoiceTableBody');
+            const emptyState = document.getElementById('emptyState');
+            tbody.innerHTML = '';
+
+            const term = searchTerm.toLowerCase();
+            const filtered = allInvoices.filter(inv => 
+                inv.clientName.toLowerCase().includes(term) || 
+                inv.clientEmail.toLowerCase().includes(term) || 
+                inv.id.toString().includes(term)
+            );
+
+            if (filtered.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                filtered.forEach(inv => {
+                    const amount = parseFloat(inv.amount) || 0;
+                    const isPaid = inv.status === 'Paid';
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-slate-100 dark:hover:bg-slate-700/30 transition-colors group">
+                            <td class="p-4 text-cyan-600 dark:text-cyan-400 font-mono text-sm">${inv.id}</td>
+                            <td class="p-4">
+                                <div class="text-slate-900 dark:text-white font-medium">${inv.clientName}</div>
+                                <div class="text-xs text-slate-500">${inv.clientEmail}</div>
+                            </td>
+                            <td class="p-4 font-bold text-slate-900 dark:text-white">$${amount.toFixed(2)}</td>
+                            <td class="p-4">
+                                <span class="${isPaid ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'} text-[10px] uppercase tracking-widest px-2 py-1 rounded-full border">
+                                    ${inv.status}
+                                </span>
+                            </td>
+                            <td class="p-4 flex items-center justify-center space-x-2">
+                                <button onclick="togglePaid('${inv.id}', '${inv.status}')" title="Toggle Paid Status" class="p-2 rounded-lg transition-colors ${isPaid ? 'text-emerald-500 hover:bg-emerald-500/10' : 'text-slate-400 hover:text-emerald-500 hover:bg-emerald-500/10'}">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
+                                </button>
+                                <button onclick="deleteInvoice('${inv.id}')" class="text-slate-400 hover:text-red-500 transition-colors p-2 hover:bg-red-500/10 rounded-lg">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
             }
         }
 
@@ -178,49 +244,24 @@
         async function loadDashboardData() {
             try {
                 const response = await fetch('http://localhost:3000/api/invoices');
-                const data = await response.json();
-                const tbody = document.getElementById('invoiceTableBody');
-                const emptyState = document.getElementById('emptyState');
+                allInvoices = await response.json();
                 
-                tbody.innerHTML = '';
-                
-                if (!data || data.length === 0) {
-                    emptyState.classList.remove('hidden');
-                } else {
-                    emptyState.classList.add('hidden');
-                    data.forEach(inv => {
-                        const isPaid = inv.status === 'Paid';
-                        tbody.innerHTML += `
-                            <tr class="hover:bg-slate-100 dark:hover:bg-slate-700/30 transition-colors group">
-                                <td class="p-4 text-cyan-600 dark:text-cyan-400 font-mono text-sm">${inv.id}</td>
-                                <td class="p-4">
-                                    <div class="text-slate-900 dark:text-white font-medium">${inv.clientName}</div>
-                                    <div class="text-xs text-slate-500">${inv.clientEmail}</div>
-                                </td>
-                                <td class="p-4 font-bold text-slate-900 dark:text-white">$${inv.amount}</td>
-                                <td class="p-4">
-                                    <span class="${isPaid ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'} text-[10px] uppercase tracking-widest px-2 py-1 rounded-full border">
-                                        ${inv.status}
-                                    </span>
-                                </td>
-                                <td class="p-4 flex items-center justify-center space-x-2">
-                                    <button onclick="togglePaid('${inv.id}', '${inv.status}')" title="Toggle Paid Status" class="p-2 rounded-lg transition-colors ${isPaid ? 'text-emerald-500 hover:bg-emerald-500/10' : 'text-slate-400 hover:text-emerald-500 hover:bg-emerald-500/10'}">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                                        </svg>
-                                    </button>
-                                    <button onclick="deleteInvoice('${inv.id}')" class="text-slate-400 hover:text-red-500 transition-colors p-2 hover:bg-red-500/10 rounded-lg">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                        </svg>
-                                    </button>
-                                </td>
-                            </tr>
-                        `;
-                    });
-                }
+                // Calculate Stats
+                let totalRevenueValue = 0;
+                let pendingBalanceValue = 0;
+                allInvoices.forEach(inv => {
+                    const amount = parseFloat(inv.amount) || 0;
+                    totalRevenueValue += amount;
+                    if (inv.status !== 'Paid') pendingBalanceValue += amount;
+                });
+
+                document.getElementById('totalRevenue').textContent = `$${totalRevenueValue.toFixed(2)}`;
+                document.getElementById('pendingBalance').textContent = `$${pendingBalanceValue.toFixed(2)}`;
+                document.getElementById('invoiceCount').textContent = allInvoices.length;
+
+                renderTable(document.getElementById('searchInput').value);
             } catch (err) {
-                console.error("Dashboard data load failed. Backend offline?");
+                console.error("Dashboard data load failed.");
             }
         }
 
