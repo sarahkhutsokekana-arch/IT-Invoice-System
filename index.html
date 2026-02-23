@@ -5,32 +5,43 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AuraBill | Admin Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; }
+        body { font-family: 'Inter', sans-serif; transition: background-color 0.3s ease; }
     </style>
 </head>
-<body class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-gray-200 min-h-screen p-4 md:p-8">
+<body class="dark bg-white dark:bg-gradient-to-br dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 text-slate-900 dark:text-gray-200 min-h-screen p-4 md:p-8">
 
-    <div class="max-w-7xl mx-auto mb-8">
-        <h1 class="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 tracking-tight">
-            AuraBill Dashboard
-        </h1>
-        <p class="text-slate-400 mt-2">IT Billing Management System</p>
+    <div class="max-w-7xl mx-auto mb-8 flex justify-between items-center">
+        <div>
+            <h1 class="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-600 to-blue-600 dark:from-cyan-400 dark:to-blue-500 tracking-tight">
+                AuraBill Dashboard
+            </h1>
+            <p class="text-slate-500 dark:text-slate-400 mt-2">IT Billing Management System</p>
+        </div>
+        
+        <button onclick="toggleTheme()" class="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:scale-110 transition-all">
+            <span id="themeIcon">🌙</span>
+        </button>
     </div>
 
     <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        <div class="bg-slate-800/80 backdrop-blur-xl p-8 rounded-2xl shadow-2xl border border-slate-700/50 lg:col-span-1 h-fit">
-            <h2 class="text-xl font-semibold mb-6 text-white flex items-center">
+        <div class="bg-slate-50 dark:bg-slate-800/80 backdrop-blur-xl p-8 rounded-2xl shadow-xl dark:shadow-2xl border border-slate-200 dark:border-slate-700/50 lg:col-span-1 h-fit">
+            <h2 class="text-xl font-semibold mb-6 text-slate-800 dark:text-white flex items-center">
                 Create New Invoice
             </h2>
             <form id="invoiceForm" class="space-y-5">
-                <input type="text" id="clientName" placeholder="Client Name" required class="w-full bg-slate-900/50 border border-slate-600 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-cyan-500 outline-none transition-all">
-                <input type="email" id="clientEmail" placeholder="Client Email" required class="w-full bg-slate-900/50 border border-slate-600 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-cyan-500 outline-none transition-all">
-                <input type="tel" id="clientPhone" placeholder="Phone Number" required class="w-full bg-slate-900/50 border border-slate-600 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-cyan-500 outline-none transition-all">
-                <input type="text" id="serviceDesc" placeholder="Service (e.g. Cloud Setup)" required class="w-full bg-slate-900/50 border border-slate-600 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-cyan-500 outline-none transition-all">
-                <input type="number" id="amount" placeholder="Amount ($)" required class="w-full bg-slate-900/50 border border-slate-600 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-cyan-500 outline-none transition-all">
+                <input type="text" id="clientName" placeholder="Client Name" required class="w-full bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-slate-900 dark:text-white focus:ring-2 focus:ring-cyan-500 outline-none transition-all">
+                <input type="email" id="clientEmail" placeholder="Client Email" required class="w-full bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-slate-900 dark:text-white focus:ring-2 focus:ring-cyan-500 outline-none transition-all">
+                <input type="tel" id="clientPhone" placeholder="Phone Number" required class="w-full bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-slate-900 dark:text-white focus:ring-2 focus:ring-cyan-500 outline-none transition-all">
+                <input type="text" id="serviceDesc" placeholder="Service (e.g. Cloud Setup)" required class="w-full bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-slate-900 dark:text-white focus:ring-2 focus:ring-cyan-500 outline-none transition-all">
+                <input type="number" id="amount" placeholder="Amount ($)" required class="w-full bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-slate-900 dark:text-white focus:ring-2 focus:ring-cyan-500 outline-none transition-all">
                 
                 <button type="submit" id="submitBtn" class="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold py-3 rounded-lg transition-all active:scale-95 shadow-lg shadow-cyan-500/20">
                     Generate & Send PDF
@@ -39,11 +50,11 @@
             <p id="statusMsg" class="mt-4 text-center text-sm hidden"></p>
         </div>
 
-        <div class="bg-slate-800/80 backdrop-blur-xl p-8 rounded-2xl shadow-2xl border border-slate-700/50 lg:col-span-2">
-            <h2 class="text-xl font-semibold mb-6 text-white">Recent Invoices</h2>
-            <div class="overflow-x-auto rounded-xl border border-slate-700/50">
+        <div class="bg-slate-50 dark:bg-slate-800/80 backdrop-blur-xl p-8 rounded-2xl shadow-xl dark:shadow-2xl border border-slate-200 dark:border-slate-700/50 lg:col-span-2">
+            <h2 class="text-xl font-semibold mb-6 text-slate-800 dark:text-white">Recent Invoices</h2>
+            <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700/50">
                 <table class="w-full text-left border-collapse">
-                    <thead class="bg-slate-900/80 text-slate-300 text-sm">
+                    <thead class="bg-slate-100 dark:bg-slate-900/80 text-slate-600 dark:text-slate-300 text-sm">
                         <tr>
                             <th class="p-4 font-semibold">ID</th>
                             <th class="p-4 font-semibold">Client</th>
@@ -52,7 +63,7 @@
                             <th class="p-4 font-semibold text-center">Actions</th>
                         </tr>
                     </thead>
-                    <tbody id="invoiceTableBody" class="divide-y divide-slate-700/50">
+                    <tbody id="invoiceTableBody" class="divide-y divide-slate-200 dark:divide-slate-700/50">
                         </tbody>
                 </table>
             </div>
@@ -64,6 +75,47 @@
     </div>
 
     <script>
+        // --- THEME LOGIC ---
+        function toggleTheme() {
+            const body = document.body;
+            const icon = document.getElementById('themeIcon');
+            if (body.classList.contains('dark')) {
+                body.classList.remove('dark');
+                icon.textContent = '☀️';
+                localStorage.setItem('theme', 'light');
+            } else {
+                body.classList.add('dark');
+                icon.textContent = '🌙';
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+
+        // Apply saved theme
+        if (localStorage.getItem('theme') === 'light') {
+            document.body.classList.remove('dark');
+            document.getElementById('themeIcon').textContent = '☀️';
+        }
+
+        // --- STATUS TOGGLE LOGIC ---
+        async function togglePaid(id, currentStatus) {
+            const newStatus = currentStatus === 'Paid' ? 'Sent' : 'Paid';
+            try {
+                // Assuming your backend has a PUT endpoint for status updates
+                const res = await fetch(`http://localhost:3000/api/invoices/${id}/status`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: newStatus })
+                });
+                
+                // If backend isn't updated yet, we reload anyway to show the local refresh
+                loadDashboardData();
+            } catch (err) {
+                console.error("Failed to update status");
+                // For demo/offline:
+                loadDashboardData(); 
+            }
+        }
+
         // --- CREATE INVOICE LOGIC ---
         document.getElementById('invoiceForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -72,7 +124,7 @@
 
             statusMsg.classList.remove('hidden');
             statusMsg.textContent = "Processing...";
-            statusMsg.className = "mt-4 text-center text-sm text-yellow-400";
+            statusMsg.className = "mt-4 text-center text-sm text-yellow-600 dark:text-yellow-400";
             submitBtn.disabled = true;
 
             const payload = {
@@ -92,7 +144,7 @@
 
                 if (res.ok) {
                     statusMsg.textContent = "Invoice Sent Successfully!";
-                    statusMsg.className = "mt-4 text-center text-sm text-emerald-400";
+                    statusMsg.className = "mt-4 text-center text-sm text-emerald-600 dark:text-emerald-400";
                     document.getElementById('invoiceForm').reset();
                     loadDashboardData();
                 } else {
@@ -100,7 +152,7 @@
                 }
             } catch (err) {
                 statusMsg.textContent = "Error: Check backend connection.";
-                statusMsg.className = "mt-4 text-center text-sm text-red-400";
+                statusMsg.className = "mt-4 text-center text-sm text-red-600 dark:text-red-400";
             } finally {
                 submitBtn.disabled = false;
             }
@@ -137,21 +189,27 @@
                 } else {
                     emptyState.classList.add('hidden');
                     data.forEach(inv => {
+                        const isPaid = inv.status === 'Paid';
                         tbody.innerHTML += `
-                            <tr class="hover:bg-slate-700/30 transition-colors group">
-                                <td class="p-4 text-cyan-400 font-mono text-sm">${inv.id}</td>
+                            <tr class="hover:bg-slate-100 dark:hover:bg-slate-700/30 transition-colors group">
+                                <td class="p-4 text-cyan-600 dark:text-cyan-400 font-mono text-sm">${inv.id}</td>
                                 <td class="p-4">
-                                    <div class="text-white font-medium">${inv.clientName}</div>
+                                    <div class="text-slate-900 dark:text-white font-medium">${inv.clientName}</div>
                                     <div class="text-xs text-slate-500">${inv.clientEmail}</div>
                                 </td>
-                                <td class="p-4 font-bold text-white">$${inv.amount}</td>
+                                <td class="p-4 font-bold text-slate-900 dark:text-white">$${inv.amount}</td>
                                 <td class="p-4">
-                                    <span class="bg-emerald-500/10 text-emerald-400 text-[10px] uppercase tracking-widest px-2 py-1 rounded-full border border-emerald-500/20">
+                                    <span class="${isPaid ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'} text-[10px] uppercase tracking-widest px-2 py-1 rounded-full border">
                                         ${inv.status}
                                     </span>
                                 </td>
-                                <td class="p-4 text-center">
-                                    <button onclick="deleteInvoice('${inv.id}')" class="text-slate-500 hover:text-red-400 transition-colors p-2 hover:bg-red-500/10 rounded-lg">
+                                <td class="p-4 flex items-center justify-center space-x-2">
+                                    <button onclick="togglePaid('${inv.id}', '${inv.status}')" title="Toggle Paid Status" class="p-2 rounded-lg transition-colors ${isPaid ? 'text-emerald-500 hover:bg-emerald-500/10' : 'text-slate-400 hover:text-emerald-500 hover:bg-emerald-500/10'}">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+                                        </svg>
+                                    </button>
+                                    <button onclick="deleteInvoice('${inv.id}')" class="text-slate-400 hover:text-red-500 transition-colors p-2 hover:bg-red-500/10 rounded-lg">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                         </svg>
@@ -166,7 +224,6 @@
             }
         }
 
-        // Initial fetch on page load
         loadDashboardData();
     </script>
 </body>
