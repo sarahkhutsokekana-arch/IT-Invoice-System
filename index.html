@@ -50,6 +50,7 @@
     </div>
 
     <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Create / Edit Form -->
         <div class="bg-slate-50 dark:bg-slate-800/80 backdrop-blur-xl p-8 rounded-2xl shadow-xl dark:shadow-2xl border border-slate-200 dark:border-slate-700/50 lg:col-span-1 h-fit">
             <h2 class="text-xl font-semibold mb-6 text-slate-800 dark:text-white">Create New Invoice</h2>
             <form id="invoiceForm" class="space-y-5">
@@ -69,11 +70,13 @@
             </form>
         </div>
 
+        <!-- Recent Invoices -->
         <div class="bg-slate-50 dark:bg-slate-800/80 backdrop-blur-xl p-8 rounded-2xl shadow-xl dark:shadow-2xl border border-slate-200 dark:border-slate-700/50 lg:col-span-2">
             <div class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
                 <h2 class="text-xl font-semibold text-slate-800 dark:text-white">Recent Invoices</h2>
                 <input type="text" id="searchInput" placeholder="Search invoices..." class="w-full md:w-64 bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600 rounded-lg py-2 px-4 text-sm text-slate-900 dark:text-white outline-none">
             </div>
+
             <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700/50">
                 <table class="w-full text-left border-collapse">
                     <thead class="bg-slate-100 dark:bg-slate-900/80 text-slate-600 dark:text-slate-300 text-sm">
@@ -93,7 +96,7 @@
         </div>
     </div>
 
-    <!-- Invoice Template Modal -->
+    <!-- Invoice Modal -->
     <div id="invoiceModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-[9999]">
         <div class="bg-white dark:bg-slate-900 max-w-md w-full mx-4 rounded-3xl overflow-hidden shadow-2xl">
             <div class="bg-gradient-to-r from-cyan-600 to-blue-600 px-8 py-6 text-white">
@@ -117,7 +120,7 @@
         </div>
     </div>
 
-    <!-- Confirmation Modal -->
+    <!-- Confirm Modal -->
     <div id="confirmModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-[9999]">
         <div class="bg-white dark:bg-slate-900 max-w-md w-full mx-4 rounded-3xl overflow-hidden shadow-2xl">
             <div class="p-8">
@@ -158,6 +161,7 @@
             messagingSenderId: "708458917827",
             appId: "1:708458917827:web:375de278577df0adcf9776"
         };
+
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
@@ -168,26 +172,42 @@
 
         let confirmCallback = null;
 
+        // ────────────────────────────────────────────────
+        //  Add Service Item Row
+        // ────────────────────────────────────────────────
         function addItemRow(desc = '', amount = '') {
             const container = document.getElementById('itemsContainer');
             const row = document.createElement('div');
             row.className = 'flex space-x-3 items-center bg-slate-100 dark:bg-slate-800/50 p-3 rounded-lg';
             row.innerHTML = `
-                <input type="text" placeholder="Service description (e.g. Server Maintenance)" value="${desc}" class="flex-1 bg-white dark:bg-slate-900/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-slate-900 dark:text-white outline-none service-desc">
-                <input type="number" placeholder="Amount (R)" step="0.01" min="0" value="${amount}" class="w-36 bg-white dark:bg-slate-900/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-slate-900 dark:text-white outline-none service-amount">
-                <button type="button" class="remove-item px-3 py-2 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-800/60 transition font-medium">Delete</button>
+                <input type="text" placeholder="Service description (e.g. Server Maintenance)" 
+                       value="${desc}" 
+                       class="flex-1 bg-white dark:bg-slate-900/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-slate-900 dark:text-white outline-none service-desc">
+                <input type="number" placeholder="Amount (R)" step="0.01" min="0"
+                       value="${amount}" 
+                       class="w-36 bg-white dark:bg-slate-900/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-slate-900 dark:text-white outline-none service-amount">
+                <button type="button" class="remove-item px-3 py-2 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-800/60 transition font-medium">
+                    Delete
+                </button>
             `;
             container.appendChild(row);
+
             row.querySelector('.remove-item').addEventListener('click', () => row.remove());
         }
 
+        // Initial empty row
         addItemRow();
+
         document.getElementById('addItem').addEventListener('click', () => addItemRow());
 
+        // ────────────────────────────────────────────────
+        //  Generate PDF with table layout
+        // ────────────────────────────────────────────────
         async function processInvoiceAndEmail(data) {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
 
+            // Header
             doc.setFont("helvetica", "bold");
             doc.setFontSize(22);
             doc.text("AURABILL", 20, 25);
@@ -195,10 +215,12 @@
             doc.setFont("helvetica", "normal");
             doc.text("INVOICE", 20, 32);
 
+            // Invoice info
             doc.setFontSize(11);
             doc.text(`Invoice ID: #INV-${data.id}`, 20, 45);
             doc.text(`Date: ${new Date().toLocaleDateString('en-ZA')}`, 20, 52);
 
+            // Bill To
             doc.text("BILL TO:", 20, 70);
             doc.setFont("helvetica", "bold");
             doc.text(data.clientName, 20, 78);
@@ -206,20 +228,25 @@
             doc.text(data.clientEmail, 20, 84);
             if (data.clientPhone) doc.text(data.clientPhone, 20, 90);
 
+            // Services Table Header
             doc.setFont("helvetica", "bold");
             doc.text("DESCRIPTION", 20, 110);
             doc.text("AMOUNT", 170, 110, { align: "right" });
+
             doc.setLineWidth(0.5);
             doc.line(20, 112, 190, 112);
 
+            // Services rows
             let yPos = 122;
             doc.setFont("helvetica", "normal");
+
             data.services.forEach(service => {
                 doc.text(service.desc, 20, yPos);
                 doc.text(`R ${parseFloat(service.amount).toFixed(2)}`, 170, yPos, { align: "right" });
                 yPos += 8;
             });
 
+            // Totals
             yPos += 5;
             doc.line(20, yPos - 2, 190, yPos - 2);
 
@@ -236,13 +263,17 @@
             doc.text("TOTAL DUE:", 130, yPos);
             doc.text(`R ${parseFloat(data.total).toFixed(2)}`, 170, yPos, { align: "right" });
 
+            // Footer note
             doc.setFontSize(9);
             doc.setFont("helvetica", "normal");
             doc.text("Thank you for your business • AuraBill IT Solutions", 20, 280);
 
+            // Save file
             doc.save(`Invoice_${data.id}.pdf`);
 
+            // Prepare base64 for email (if using EmailJS attachment)
             const pdfBase64 = doc.output('datauristring').split(',')[1];
+
             const templateParams = {
                 to_email: data.clientEmail,
                 client_name: data.clientName,
@@ -250,18 +281,23 @@
                 amount: data.total.toFixed(2),
                 content: pdfBase64
             };
+
             return emailjs.send('YOUR_SERVICE_ID', 'YOUR_TEMPLATE_ID', templateParams);
         }
 
-        document.getElementById('invoiceForm').addEventListener('submit', (e) => {
+        // ────────────────────────────────────────────────
+        //  Form Submit – Create or Update
+        // ────────────────────────────────────────────────
+        document.getElementById('invoiceForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const submitBtn = document.getElementById('submitBtn');
-            const originalBtnText = submitBtn.textContent;
+            const originalText = submitBtn.textContent;
             submitBtn.textContent = "Processing...";
             submitBtn.disabled = true;
 
             const services = [];
             let subtotal = 0;
+
             document.querySelectorAll('#itemsContainer > div').forEach(row => {
                 const desc = row.querySelector('.service-desc').value.trim();
                 const amount = parseFloat(row.querySelector('.service-amount').value) || 0;
@@ -272,8 +308,8 @@
             });
 
             if (services.length === 0) {
-                showMessage("Add at least one service item.");
-                submitBtn.textContent = originalBtnText;
+                showMessage("Please add at least one service item.");
+                submitBtn.textContent = originalText;
                 submitBtn.disabled = false;
                 return;
             }
@@ -293,43 +329,31 @@
                 status: 'Sent'
             };
 
-            if (editKey) {
-                data.id = allInvoices.find(inv => inv.key === editKey).id;
-                db.ref('invoices/' + editKey).update(data, async (error) => {
-                    if (error) {
-                        showMessage("Database Error.");
-                    } else {
-                        try {
-                            await processInvoiceAndEmail(data);
-                            showMessage("Invoice successfully updated and sent!");
-                            resetForm();
-                            editKey = null;
-                        } catch (err) {
-                            showMessage("Email failed. Verify EmailJS settings.");
-                        }
-                    }
-                    submitBtn.textContent = originalBtnText;
-                    submitBtn.disabled = false;
-                });
-            } else {
-                const newInvoiceRef = db.ref('invoices').push();
-                data.id = newInvoiceRef.key.slice(-6).toUpperCase();
-                newInvoiceRef.set(data, async (error) => {
-                    if (error) {
-                        showMessage("Database Error.");
-                    } else {
-                        try {
-                            await processInvoiceAndEmail(data);
-                            showMessage("Invoice successfully sent to client!");
-                            resetForm();
-                            viewInvoice(newInvoiceRef.key);
-                        } catch (err) {
-                            showMessage("Email failed. Verify EmailJS settings.");
-                        }
-                    }
-                    submitBtn.textContent = originalBtnText;
-                    submitBtn.disabled = false;
-                });
+            try {
+                if (editKey) {
+                    // Update existing
+                    data.id = allInvoices.find(inv => inv.key === editKey).id;
+                    await db.ref('invoices/' + editKey).update(data);
+                    await processInvoiceAndEmail(data);
+                    showMessage("Invoice updated and re-sent!");
+                    resetForm();
+                    editKey = null;
+                } else {
+                    // Create new
+                    const newRef = db.ref('invoices').push();
+                    data.id = newRef.key.slice(-6).toUpperCase();
+                    await newRef.set(data);
+                    await processInvoiceAndEmail(data);
+                    showMessage("Invoice created and sent!");
+                    resetForm();
+                    viewInvoice(newRef.key);
+                }
+            } catch (err) {
+                console.error(err);
+                showMessage("Error occurred. Check console.");
+            } finally {
+                submitBtn.textContent = originalText;
+                submitBtn.disabled = false;
             }
         });
 
@@ -341,26 +365,35 @@
             document.querySelector('h2.text-xl.font-semibold.mb-6').textContent = 'Create New Invoice';
         }
 
+        // ────────────────────────────────────────────────
+        //  Real-time listener
+        // ────────────────────────────────────────────────
         db.ref('invoices').on('value', (snapshot) => {
             allInvoices = [];
-            let totalRev = 0, pendingBal = 0;
-            snapshot.forEach((child) => {
+            let totalRev = 0, pending = 0;
+
+            snapshot.forEach(child => {
                 const val = child.val();
                 allInvoices.push({ ...val, key: child.key });
                 totalRev += parseFloat(val.total || 0);
-                if (val.status !== 'Paid') pendingBal += parseFloat(val.total || 0);
+                if (val.status !== 'Paid') pending += parseFloat(val.total || 0);
             });
+
             document.getElementById('totalRevenue').textContent = `R ${totalRev.toFixed(2)}`;
-            document.getElementById('pendingBalance').textContent = `R ${pendingBal.toFixed(2)}`;
+            document.getElementById('pendingBalance').textContent = `R ${pending.toFixed(2)}`;
             document.getElementById('invoiceCount').textContent = allInvoices.length;
+
             renderTable();
         });
 
         function renderTable() {
             const tbody = document.getElementById('invoiceTableBody');
             tbody.innerHTML = '';
+
             allInvoices.forEach(inv => {
                 const dateTime = new Date(inv.timestamp).toLocaleString('en-ZA');
+                let statusClass = inv.status === 'Paid' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300';
+
                 tbody.innerHTML += `
                     <tr class="hover:bg-slate-100 dark:hover:bg-slate-700/30">
                         <td class="p-4 font-mono text-cyan-500">${inv.id}</td>
@@ -371,7 +404,9 @@
                         <td class="p-4">${dateTime}</td>
                         <td class="p-4 font-bold">R ${parseFloat(inv.total || 0).toFixed(2)}</td>
                         <td class="p-4">
-                            <span class="px-2 py-1 rounded-full border text-[10px] uppercase">${inv.status}</span>
+                            <span class="px-2 py-1 rounded-full border text-[10px] uppercase ${statusClass}">
+                                ${inv.status}
+                            </span>
                         </td>
                         <td class="p-4 text-center">
                             <button onclick="editInvoice('${inv.key}')" class="text-blue-400 hover:text-blue-600 mr-2">Edit</button>
@@ -382,14 +417,166 @@
             });
         }
 
+        // ────────────────────────────────────────────────
+        //  Modal – View Invoice
+        // ────────────────────────────────────────────────
         function viewInvoice(key) {
             currentInvoice = allInvoices.find(inv => inv.key === key);
             if (!currentInvoice) return;
 
-            const date = new Date(currentInvoice.timestamp || Date.now()).toLocaleString('en-ZA');
+            const date = new Date(currentInvoice.timestamp).toLocaleString('en-ZA');
             let servicesHtml = '';
-            currentInvoice.services.forEach(service => {
+
+            currentInvoice.services.forEach(s => {
                 servicesHtml += `
                     <tr>
-                        <td class="py-6 text-lg">${service.desc}</td>
-                        <td class="py-6 text-right font-bold text-xl">R ${parseFloat(service.amount
+                        <td class="py-4">${s.desc}</td>
+                        <td class="py-4 text-right font-medium">R ${parseFloat(s.amount).toFixed(2)}</td>
+                    </tr>`;
+            });
+
+            document.getElementById('modalContent').innerHTML = `
+                <div class="space-y-8">
+                    <div class="flex justify-between">
+                        <div>
+                            <div class="text-xs uppercase tracking-widest text-slate-500 dark:text-slate-400">INVOICE #</div>
+                            <div class="text-4xl font-mono font-bold text-slate-900 dark:text-white">#INV-${currentInvoice.id}</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-xs uppercase tracking-widest text-slate-500 dark:text-slate-400">DATE</div>
+                            <div class="font-medium">${date}</div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="text-xs uppercase text-slate-500 dark:text-slate-400 mb-2">BILL TO</div>
+                        <div class="font-semibold text-xl">${currentInvoice.clientName}</div>
+                        <div class="text-slate-600 dark:text-slate-300">${currentInvoice.clientEmail}</div>
+                        ${currentInvoice.clientPhone ? `<div class="text-slate-600 dark:text-slate-300">${currentInvoice.clientPhone}</div>` : ''}
+                    </div>
+
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-slate-200 dark:border-slate-700">
+                                <th class="text-left py-3 text-xs font-medium text-slate-500 dark:text-slate-400">DESCRIPTION</th>
+                                <th class="text-right py-3 text-xs font-medium text-slate-500 dark:text-slate-400">AMOUNT</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${servicesHtml}
+                            <tr class="border-t border-slate-200 dark:border-slate-700">
+                                <td class="py-5 font-medium">Subtotal</td>
+                                <td class="py-5 text-right font-medium">R ${parseFloat(currentInvoice.subtotal).toFixed(2)}</td>
+                            </tr>
+                            <tr>
+                                <td class="py-5 font-medium">VAT (15%)</td>
+                                <td class="py-5 text-right font-medium">R ${parseFloat(currentInvoice.vat).toFixed(2)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div class="flex justify-end border-t border-slate-200 dark:border-slate-700 pt-6">
+                        <div class="text-right">
+                            <div class="text-xs text-slate-500 dark:text-slate-400">TOTAL DUE</div>
+                            <div class="text-4xl font-bold text-emerald-600 dark:text-emerald-400">R ${parseFloat(currentInvoice.total).toFixed(2)}</div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end">
+                        <span class="px-6 py-1.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-xs font-medium rounded-full">
+                            ${currentInvoice.status}
+                        </span>
+                    </div>
+
+                    <div class="pt-8 text-center text-xs text-slate-400 dark:text-slate-500">
+                        Thank you for your business • AuraBill IT Solutions
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('invoiceModal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('invoiceModal').classList.add('hidden');
+        }
+
+        // ────────────────────────────────────────────────
+        //  Download current invoice (same layout as sent PDF)
+        // ────────────────────────────────────────────────
+        function downloadCurrentInvoice() {
+            if (!currentInvoice) return;
+            processInvoiceAndEmail(currentInvoice).catch(err => console.error("PDF generation failed", err));
+        }
+
+        // ────────────────────────────────────────────────
+        //  Actions: Edit / Delete / Mark Paid
+        // ────────────────────────────────────────────────
+        function editInvoice(key) {
+            const inv = allInvoices.find(i => i.key === key);
+            if (!inv) return;
+
+            editKey = key;
+            document.getElementById('clientName').value = inv.clientName;
+            document.getElementById('clientEmail').value = inv.clientEmail;
+            document.getElementById('clientPhone').value = inv.clientPhone || '';
+
+            const container = document.getElementById('itemsContainer');
+            container.innerHTML = '';
+            inv.services.forEach(s => addItemRow(s.desc, s.amount));
+
+            document.getElementById('submitBtn').textContent = 'Update & Email PDF';
+            document.querySelector('h2.text-xl.font-semibold.mb-6').textContent = 'Edit Invoice';
+        }
+
+        function deleteInvoice(key) {
+            showConfirm("Delete this invoice permanently?", (yes) => {
+                if (yes) db.ref('invoices/' + key).remove();
+            });
+        }
+
+        function markPaid(key) {
+            showConfirm("Mark this invoice as Paid?", (yes) => {
+                if (yes) db.ref('invoices/' + key).update({ status: 'Paid' });
+            });
+        }
+
+        // ────────────────────────────────────────────────
+        //  Theme, Modals, Helpers
+        // ────────────────────────────────────────────────
+        function toggleTheme() {
+            document.body.classList.toggle('dark');
+        }
+
+        function showConfirm(message, callback) {
+            document.getElementById('confirmMessage').textContent = message;
+            document.getElementById('confirmModal').classList.remove('hidden');
+            confirmCallback = callback;
+        }
+
+        function confirmYes() {
+            if (confirmCallback) confirmCallback(true);
+            closeConfirm();
+        }
+
+        function confirmNo() {
+            if (confirmCallback) confirmCallback(false);
+            closeConfirm();
+        }
+
+        function closeConfirm() {
+            document.getElementById('confirmModal').classList.add('hidden');
+            confirmCallback = null;
+        }
+
+        function showMessage(text) {
+            document.getElementById('messageText').textContent = text;
+            document.getElementById('messageModal').classList.remove('hidden');
+        }
+
+        function closeMessage() {
+            document.getElementById('messageModal').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
