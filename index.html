@@ -50,7 +50,6 @@
     </div>
 
     <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <!-- Create / Edit Form -->
         <div class="bg-slate-50 dark:bg-slate-800/80 backdrop-blur-xl p-8 rounded-2xl shadow-xl dark:shadow-2xl border border-slate-200 dark:border-slate-700/50 lg:col-span-1 h-fit">
             <h2 class="text-xl font-semibold mb-6 text-slate-800 dark:text-white">Create New Invoice</h2>
             <form id="invoiceForm" class="space-y-5">
@@ -70,7 +69,6 @@
             </form>
         </div>
 
-        <!-- Recent Invoices -->
         <div class="bg-slate-50 dark:bg-slate-800/80 backdrop-blur-xl p-8 rounded-2xl shadow-xl dark:shadow-2xl border border-slate-200 dark:border-slate-700/50 lg:col-span-2">
             <div class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
                 <h2 class="text-xl font-semibold text-slate-800 dark:text-white">Recent Invoices</h2>
@@ -96,9 +94,8 @@
         </div>
     </div>
 
-    <!-- Invoice Modal -->
     <div id="invoiceModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-[9999]">
-        <div class="bg-white dark:bg-slate-900 max-w-md w-full mx-4 rounded-3xl overflow-hidden shadow-2xl">
+        <div class="bg-white dark:bg-slate-900 max-w-2xl w-full mx-4 rounded-3xl overflow-hidden shadow-2xl">
             <div class="bg-gradient-to-r from-cyan-600 to-blue-600 px-8 py-6 text-white">
                 <div class="flex justify-between items-center">
                     <div>
@@ -108,7 +105,7 @@
                     <button onclick="closeModal()" class="text-4xl leading-none text-white/80 hover:text-white">×</button>
                 </div>
             </div>
-            <div id="modalContent" class="p-8 text-slate-800 dark:text-slate-200"></div>
+            <div id="modalContent" class="p-8 text-slate-800 dark:text-slate-200 max-h-[70vh] overflow-y-auto"></div>
             <div class="border-t border-slate-200 dark:border-slate-700 px-8 py-6 flex gap-3 bg-slate-50 dark:bg-slate-950">
                 <button onclick="closeModal()" class="flex-1 py-3.5 text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-700 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition">
                     Close
@@ -120,7 +117,6 @@
         </div>
     </div>
 
-    <!-- Confirm Modal -->
     <div id="confirmModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-[9999]">
         <div class="bg-white dark:bg-slate-900 max-w-md w-full mx-4 rounded-3xl overflow-hidden shadow-2xl">
             <div class="p-8">
@@ -137,7 +133,6 @@
         </div>
     </div>
 
-    <!-- Message Modal -->
     <div id="messageModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-[9999]">
         <div class="bg-white dark:bg-slate-900 max-w-md w-full mx-4 rounded-3xl overflow-hidden shadow-2xl">
             <div class="p-8">
@@ -172,18 +167,15 @@
 
         let confirmCallback = null;
 
-        // ────────────────────────────────────────────────
-        //  Add Service Item Row
-        // ────────────────────────────────────────────────
         function addItemRow(desc = '', amount = '') {
             const container = document.getElementById('itemsContainer');
             const row = document.createElement('div');
             row.className = 'flex space-x-3 items-center bg-slate-100 dark:bg-slate-800/50 p-3 rounded-lg';
             row.innerHTML = `
-                <input type="text" placeholder="Service description (e.g. Server Maintenance)" 
+                <input type="text" placeholder="Service description" 
                        value="${desc}" 
                        class="flex-1 bg-white dark:bg-slate-900/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-slate-900 dark:text-white outline-none service-desc">
-                <input type="number" placeholder="Amount (R)" step="0.01" min="0"
+                <input type="number" placeholder="Amount" step="0.01" min="0"
                        value="${amount}" 
                        class="w-36 bg-white dark:bg-slate-900/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-slate-900 dark:text-white outline-none service-amount">
                 <button type="button" class="remove-item px-3 py-2 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-800/60 transition font-medium">
@@ -191,89 +183,59 @@
                 </button>
             `;
             container.appendChild(row);
-
             row.querySelector('.remove-item').addEventListener('click', () => row.remove());
         }
 
-        // Initial empty row
         addItemRow();
-
         document.getElementById('addItem').addEventListener('click', () => addItemRow());
 
-        // ────────────────────────────────────────────────
-        //  Generate PDF with table layout
-        // ────────────────────────────────────────────────
         async function processInvoiceAndEmail(data) {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
-
-            // Header
             doc.setFont("helvetica", "bold");
             doc.setFontSize(22);
             doc.text("AURABILL", 20, 25);
             doc.setFontSize(10);
             doc.setFont("helvetica", "normal");
             doc.text("INVOICE", 20, 32);
-
-            // Invoice info
             doc.setFontSize(11);
             doc.text(`Invoice ID: #INV-${data.id}`, 20, 45);
             doc.text(`Date: ${new Date().toLocaleDateString('en-ZA')}`, 20, 52);
-
-            // Bill To
             doc.text("BILL TO:", 20, 70);
             doc.setFont("helvetica", "bold");
             doc.text(data.clientName, 20, 78);
             doc.setFont("helvetica", "normal");
             doc.text(data.clientEmail, 20, 84);
             if (data.clientPhone) doc.text(data.clientPhone, 20, 90);
-
-            // Services Table Header
             doc.setFont("helvetica", "bold");
             doc.text("DESCRIPTION", 20, 110);
             doc.text("AMOUNT", 170, 110, { align: "right" });
-
             doc.setLineWidth(0.5);
             doc.line(20, 112, 190, 112);
-
-            // Services rows
             let yPos = 122;
             doc.setFont("helvetica", "normal");
-
             data.services.forEach(service => {
                 doc.text(service.desc, 20, yPos);
                 doc.text(`R ${parseFloat(service.amount).toFixed(2)}`, 170, yPos, { align: "right" });
                 yPos += 8;
             });
-
-            // Totals
             yPos += 5;
             doc.line(20, yPos - 2, 190, yPos - 2);
-
             doc.text("Subtotal:", 130, yPos);
             doc.text(`R ${parseFloat(data.subtotal).toFixed(2)}`, 170, yPos, { align: "right" });
             yPos += 8;
-
             doc.text("VAT (15%):", 130, yPos);
             doc.text(`R ${parseFloat(data.vat).toFixed(2)}`, 170, yPos, { align: "right" });
             yPos += 10;
-
             doc.setFont("helvetica", "bold");
             doc.setFontSize(13);
             doc.text("TOTAL DUE:", 130, yPos);
             doc.text(`R ${parseFloat(data.total).toFixed(2)}`, 170, yPos, { align: "right" });
-
-            // Footer note
             doc.setFontSize(9);
             doc.setFont("helvetica", "normal");
             doc.text("Thank you for your business • AuraBill IT Solutions", 20, 280);
-
-            // Save file
             doc.save(`Invoice_${data.id}.pdf`);
-
-            // Prepare base64 for email (if using EmailJS attachment)
             const pdfBase64 = doc.output('datauristring').split(',')[1];
-
             const templateParams = {
                 to_email: data.clientEmail,
                 client_name: data.clientName,
@@ -281,23 +243,17 @@
                 amount: data.total.toFixed(2),
                 content: pdfBase64
             };
-
             return emailjs.send('YOUR_SERVICE_ID', 'YOUR_TEMPLATE_ID', templateParams);
         }
 
-        // ────────────────────────────────────────────────
-        //  Form Submit – Create or Update
-        // ────────────────────────────────────────────────
         document.getElementById('invoiceForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const submitBtn = document.getElementById('submitBtn');
             const originalText = submitBtn.textContent;
             submitBtn.textContent = "Processing...";
             submitBtn.disabled = true;
-
             const services = [];
             let subtotal = 0;
-
             document.querySelectorAll('#itemsContainer > div').forEach(row => {
                 const desc = row.querySelector('.service-desc').value.trim();
                 const amount = parseFloat(row.querySelector('.service-amount').value) || 0;
@@ -306,32 +262,24 @@
                     subtotal += amount;
                 }
             });
-
             if (services.length === 0) {
                 showMessage("Please add at least one service item.");
                 submitBtn.textContent = originalText;
                 submitBtn.disabled = false;
                 return;
             }
-
             const vat = subtotal * VAT_RATE;
             const total = subtotal + vat;
-
             const data = {
                 clientName: document.getElementById('clientName').value,
                 clientEmail: document.getElementById('clientEmail').value,
                 clientPhone: document.getElementById('clientPhone').value,
-                services,
-                subtotal,
-                vat,
-                total,
+                services, subtotal, vat, total,
                 timestamp: Date.now(),
                 status: 'Sent'
             };
-
             try {
                 if (editKey) {
-                    // Update existing
                     data.id = allInvoices.find(inv => inv.key === editKey).id;
                     await db.ref('invoices/' + editKey).update(data);
                     await processInvoiceAndEmail(data);
@@ -339,7 +287,6 @@
                     resetForm();
                     editKey = null;
                 } else {
-                    // Create new
                     const newRef = db.ref('invoices').push();
                     data.id = newRef.key.slice(-6).toUpperCase();
                     await newRef.set(data);
@@ -365,40 +312,32 @@
             document.querySelector('h2.text-xl.font-semibold.mb-6').textContent = 'Create New Invoice';
         }
 
-        // ────────────────────────────────────────────────
-        //  Real-time listener
-        // ────────────────────────────────────────────────
         db.ref('invoices').on('value', (snapshot) => {
             allInvoices = [];
             let totalRev = 0, pending = 0;
-
             snapshot.forEach(child => {
                 const val = child.val();
                 allInvoices.push({ ...val, key: child.key });
                 totalRev += parseFloat(val.total || 0);
                 if (val.status !== 'Paid') pending += parseFloat(val.total || 0);
             });
-
             document.getElementById('totalRevenue').textContent = `R ${totalRev.toFixed(2)}`;
             document.getElementById('pendingBalance').textContent = `R ${pending.toFixed(2)}`;
             document.getElementById('invoiceCount').textContent = allInvoices.length;
-
             renderTable();
         });
 
         function renderTable() {
             const tbody = document.getElementById('invoiceTableBody');
             tbody.innerHTML = '';
-
             allInvoices.forEach(inv => {
                 const dateTime = new Date(inv.timestamp).toLocaleString('en-ZA');
                 let statusClass = inv.status === 'Paid' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' : 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300';
-
                 tbody.innerHTML += `
-                    <tr class="hover:bg-slate-100 dark:hover:bg-slate-700/30">
+                    <tr class="hover:bg-slate-100 dark:hover:bg-slate-700/30 transition">
                         <td class="p-4 font-mono text-cyan-500">${inv.id}</td>
-                        <td onclick="viewInvoice('${inv.key}')" class="p-4 cursor-pointer hover:text-cyan-600 dark:hover:text-cyan-400 transition">
-                            <b>${inv.clientName}</b><br>
+                        <td onclick="viewInvoice('${inv.key}')" class="p-4 cursor-pointer hover:text-cyan-600 dark:hover:text-cyan-400 group">
+                            <b class="group-hover:underline">${inv.clientName}</b><br>
                             <small class="text-slate-500 dark:text-slate-400">${inv.clientEmail}</small>
                         </td>
                         <td class="p-4">${dateTime}</td>
@@ -418,7 +357,7 @@
         }
 
         // ────────────────────────────────────────────────
-        //  Modal – View Invoice
+        //  MODIFIED: View Invoice Template Logic
         // ────────────────────────────────────────────────
         function viewInvoice(key) {
             currentInvoice = allInvoices.find(inv => inv.key === key);
@@ -429,67 +368,71 @@
 
             currentInvoice.services.forEach(s => {
                 servicesHtml += `
-                    <tr>
-                        <td class="py-4">${s.desc}</td>
+                    <tr class="border-b border-slate-100 dark:border-slate-800">
+                        <td class="py-4 text-slate-700 dark:text-slate-300">${s.desc}</td>
                         <td class="py-4 text-right font-medium">R ${parseFloat(s.amount).toFixed(2)}</td>
                     </tr>`;
             });
 
             document.getElementById('modalContent').innerHTML = `
                 <div class="space-y-8">
-                    <div class="flex justify-between">
+                    <div class="flex justify-between items-start">
                         <div>
-                            <div class="text-xs uppercase tracking-widest text-slate-500 dark:text-slate-400">INVOICE #</div>
-                            <div class="text-4xl font-mono font-bold text-slate-900 dark:text-white">#INV-${currentInvoice.id}</div>
+                            <div class="text-xs uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">INVOICE NUMBER</div>
+                            <div class="text-3xl font-mono font-bold text-slate-900 dark:text-white">#INV-${currentInvoice.id}</div>
                         </div>
                         <div class="text-right">
-                            <div class="text-xs uppercase tracking-widest text-slate-500 dark:text-slate-400">DATE</div>
-                            <div class="font-medium">${date}</div>
+                            <div class="text-xs uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">DATE ISSUED</div>
+                            <div class="font-medium text-slate-900 dark:text-white">${date}</div>
                         </div>
                     </div>
 
-                    <div>
-                        <div class="text-xs uppercase text-slate-500 dark:text-slate-400 mb-2">BILL TO</div>
-                        <div class="font-semibold text-xl">${currentInvoice.clientName}</div>
-                        <div class="text-slate-600 dark:text-slate-300">${currentInvoice.clientEmail}</div>
-                        ${currentInvoice.clientPhone ? `<div class="text-slate-600 dark:text-slate-300">${currentInvoice.clientPhone}</div>` : ''}
+                    <div class="grid grid-cols-2 gap-8">
+                        <div>
+                            <div class="text-xs uppercase text-slate-500 dark:text-slate-400 mb-2 font-bold tracking-wider">BILL TO</div>
+                            <div class="font-bold text-xl text-slate-900 dark:text-white">${currentInvoice.clientName}</div>
+                            <div class="text-slate-600 dark:text-slate-400">${currentInvoice.clientEmail}</div>
+                            ${currentInvoice.clientPhone ? `<div class="text-slate-600 dark:text-slate-400">${currentInvoice.clientPhone}</div>` : ''}
+                        </div>
+                        <div class="text-right">
+                             <div class="text-xs uppercase text-slate-500 dark:text-slate-400 mb-2 font-bold tracking-wider">PAYMENT STATUS</div>
+                             <span class="px-3 py-1 rounded-full text-xs font-bold uppercase ${currentInvoice.status === 'Paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}">
+                                ${currentInvoice.status}
+                             </span>
+                        </div>
                     </div>
 
                     <table class="w-full">
                         <thead>
-                            <tr class="border-b border-slate-200 dark:border-slate-700">
-                                <th class="text-left py-3 text-xs font-medium text-slate-500 dark:text-slate-400">DESCRIPTION</th>
-                                <th class="text-right py-3 text-xs font-medium text-slate-500 dark:text-slate-400">AMOUNT</th>
+                            <tr class="border-b-2 border-slate-200 dark:border-slate-700">
+                                <th class="text-left py-3 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-tighter">Description</th>
+                                <th class="text-right py-3 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-tighter">Amount</th>
                             </tr>
                         </thead>
                         <tbody>
                             ${servicesHtml}
-                            <tr class="border-t border-slate-200 dark:border-slate-700">
-                                <td class="py-5 font-medium">Subtotal</td>
-                                <td class="py-5 text-right font-medium">R ${parseFloat(currentInvoice.subtotal).toFixed(2)}</td>
-                            </tr>
-                            <tr>
-                                <td class="py-5 font-medium">VAT (15%)</td>
-                                <td class="py-5 text-right font-medium">R ${parseFloat(currentInvoice.vat).toFixed(2)}</td>
-                            </tr>
                         </tbody>
                     </table>
 
-                    <div class="flex justify-end border-t border-slate-200 dark:border-slate-700 pt-6">
-                        <div class="text-right">
-                            <div class="text-xs text-slate-500 dark:text-slate-400">TOTAL DUE</div>
-                            <div class="text-4xl font-bold text-emerald-600 dark:text-emerald-400">R ${parseFloat(currentInvoice.total).toFixed(2)}</div>
+                    <div class="flex justify-end pt-4">
+                        <div class="w-full max-w-xs space-y-3">
+                            <div class="flex justify-between text-slate-600 dark:text-slate-400">
+                                <span>Subtotal</span>
+                                <span>R ${parseFloat(currentInvoice.subtotal).toFixed(2)}</span>
+                            </div>
+                            <div class="flex justify-between text-slate-600 dark:text-slate-400">
+                                <span>VAT (15%)</span>
+                                <span>R ${parseFloat(currentInvoice.vat).toFixed(2)}</span>
+                            </div>
+                            <div class="flex justify-between border-t border-slate-200 dark:border-slate-700 pt-3">
+                                <span class="font-bold text-slate-900 dark:text-white">TOTAL DUE</span>
+                                <span class="text-2xl font-bold text-cyan-600 dark:text-cyan-400">R ${parseFloat(currentInvoice.total).toFixed(2)}</span>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="flex justify-end">
-                        <span class="px-6 py-1.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-xs font-medium rounded-full">
-                            ${currentInvoice.status}
-                        </span>
-                    </div>
-
-                    <div class="pt-8 text-center text-xs text-slate-400 dark:text-slate-500">
-                        Thank you for your business • AuraBill IT Solutions
+                    <div class="pt-12 text-center text-xs text-slate-400 dark:text-slate-500 border-t border-dashed border-slate-200 dark:border-slate-800">
+                        Thank you for choosing AuraBill IT Solutions. Payment is due within 30 days.
                     </div>
                 </div>
             `;
@@ -501,30 +444,21 @@
             document.getElementById('invoiceModal').classList.add('hidden');
         }
 
-        // ────────────────────────────────────────────────
-        //  Download current invoice (same layout as sent PDF)
-        // ────────────────────────────────────────────────
         function downloadCurrentInvoice() {
             if (!currentInvoice) return;
-            processInvoiceAndEmail(currentInvoice).catch(err => console.error("PDF generation failed", err));
+            processInvoiceAndEmail(currentInvoice).catch(err => console.error(err));
         }
 
-        // ────────────────────────────────────────────────
-        //  Actions: Edit / Delete / Mark Paid
-        // ────────────────────────────────────────────────
         function editInvoice(key) {
             const inv = allInvoices.find(i => i.key === key);
             if (!inv) return;
-
             editKey = key;
             document.getElementById('clientName').value = inv.clientName;
             document.getElementById('clientEmail').value = inv.clientEmail;
             document.getElementById('clientPhone').value = inv.clientPhone || '';
-
             const container = document.getElementById('itemsContainer');
             container.innerHTML = '';
             inv.services.forEach(s => addItemRow(s.desc, s.amount));
-
             document.getElementById('submitBtn').textContent = 'Update & Email PDF';
             document.querySelector('h2.text-xl.font-semibold.mb-6').textContent = 'Edit Invoice';
         }
@@ -541,9 +475,6 @@
             });
         }
 
-        // ────────────────────────────────────────────────
-        //  Theme, Modals, Helpers
-        // ────────────────────────────────────────────────
         function toggleTheme() {
             document.body.classList.toggle('dark');
         }
