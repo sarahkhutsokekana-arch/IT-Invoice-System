@@ -75,6 +75,7 @@
                         <tr>
                             <th class="p-4 font-semibold">ID</th>
                             <th class="p-4 font-semibold">Client</th>
+                            <th class="p-4 font-semibold">Date</th>
                             <th class="p-4 font-semibold">Amount</th>
                             <th class="p-4 font-semibold">Status</th>
                             <th class="p-4 font-semibold text-center">Actions</th>
@@ -234,11 +235,16 @@
                 } else {
                     try {
                         await processInvoiceAndEmail(data);
-                        statusMsg.textContent = "Invoice successfully sent to client!";
-                        statusMsg.className = "mt-4 text-center text-sm text-emerald-500";
+                        // statusMsg.textContent = "Invoice successfully sent to client!";
+                        // statusMsg.className = "mt-4 text-center text-sm text-emerald-500";
                         document.getElementById('invoiceForm').reset();
                         document.getElementById('itemsContainer').innerHTML = '';
                         addItemRow();
+                        // Local update to show modal immediately
+                        const key = newInvoiceRef.key;
+                        allInvoices.push({ ...data, key });
+                        renderTable();
+                        viewInvoice(key);
                     } catch (err) {
                         statusMsg.textContent = "Email failed. Verify EmailJS settings.";
                         statusMsg.className = "mt-4 text-center text-sm text-red-500";
@@ -267,6 +273,7 @@
             const tbody = document.getElementById('invoiceTableBody');
             tbody.innerHTML = '';
             allInvoices.forEach(inv => {
+                const dateTime = new Date(inv.timestamp).toLocaleString('en-ZA');
                 tbody.innerHTML += `
                     <tr class="hover:bg-slate-100 dark:hover:bg-slate-700/30">
                         <td class="p-4 font-mono text-cyan-500">${inv.id}</td>
@@ -276,11 +283,13 @@
                             <b>${inv.clientName}</b><br>
                             <small class="text-slate-500 dark:text-slate-400">${inv.clientEmail}</small>
                         </td>
+                        <td class="p-4">${dateTime}</td>
                         <td class="p-4 font-bold">R ${parseFloat(inv.total || 0).toFixed(2)}</td>
                         <td class="p-4">
                             <span class="px-2 py-1 rounded-full border text-[10px] uppercase">${inv.status}</span>
                         </td>
                         <td class="p-4 text-center">
+                            ${inv.status === 'Sent' ? `<button onclick="markPaid('${inv.key}')" class="text-green-400 hover:text-green-600 mr-2">Mark Paid</button>` : ''}
                             <button onclick="deleteInvoice('${inv.key}')" class="text-red-400 hover:text-red-600">Delete</button>
                         </td>
                     </tr>`;
@@ -290,7 +299,7 @@
         function viewInvoice(key) {
             currentInvoice = allInvoices.find(inv => inv.key === key);
             if (!currentInvoice) return;
-            const date = new Date(currentInvoice.timestamp || Date.now()).toLocaleDateString('en-ZA');
+            const date = new Date(currentInvoice.timestamp || Date.now()).toLocaleString('en-ZA');
             const modalContent = document.getElementById('modalContent');
             let servicesHtml = '';
             currentInvoice.services.forEach(service => {
@@ -396,6 +405,9 @@
         }
         function deleteInvoice(key) {
             if(confirm("Delete this invoice?")) db.ref('invoices/' + key).remove();
+        }
+        function markPaid(key) {
+            if(confirm("Mark this invoice as paid?")) db.ref('invoices/' + key).update({status: 'Paid'});
         }
         function toggleTheme() {
             document.body.classList.toggle('dark');
