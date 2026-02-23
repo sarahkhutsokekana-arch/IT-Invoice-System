@@ -8,12 +8,6 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
-        
-        /* Custom Scrollbar for the table */
-        ::-webkit-scrollbar { height: 8px; width: 8px; }
-        ::-webkit-scrollbar-track { background: #0f172a; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #475569; }
     </style>
 </head>
 <body class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-gray-200 min-h-screen p-4 md:p-8">
@@ -22,101 +16,58 @@
         <h1 class="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 tracking-tight">
             AuraBill Dashboard
         </h1>
-        <p class="text-slate-400 mt-2 text-sm md:text-base">Automated IT Invoice & Billing Management</p>
+        <p class="text-slate-400 mt-2">IT Billing Management System</p>
     </div>
 
     <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         <div class="bg-slate-800/80 backdrop-blur-xl p-8 rounded-2xl shadow-2xl border border-slate-700/50 lg:col-span-1 h-fit">
             <h2 class="text-xl font-semibold mb-6 text-white flex items-center">
-                <svg class="w-5 h-5 mr-2 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
                 Create New Invoice
             </h2>
             <form id="invoiceForm" class="space-y-5">
-                <div>
-                    <label class="block text-sm font-medium mb-1.5 text-slate-300">Client Name</label>
-                    <input type="text" id="clientName" required class="w-full bg-slate-900/50 border border-slate-600 rounded-lg p-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1.5 text-slate-300">Client Email</label>
-                    <input type="email" id="clientEmail" required class="w-full bg-slate-900/50 border border-slate-600 rounded-lg p-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1.5 text-slate-300">Client Phone</label>
-                    <input type="tel" id="clientPhone" required class="w-full bg-slate-900/50 border border-slate-600 rounded-lg p-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1.5 text-slate-300">Service Description</label>
-                    <input type="text" id="serviceDesc" required class="w-full bg-slate-900/50 border border-slate-600 rounded-lg p-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1.5 text-slate-300">Amount (R)</label>
-                    <input type="number" id="amount" required class="w-full bg-slate-900/50 border border-slate-600 rounded-lg p-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all">
-                </div>
-                <button type="submit" id="submitBtn" class="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold py-3 px-4 rounded-lg shadow-lg transform transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 flex justify-center items-center">
-                    <span id="btnText">Generate & Send PDF</span>
-                    <svg id="btnSpinner" class="animate-spin ml-2 h-5 w-5 text-white hidden" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
+                <input type="text" id="clientName" placeholder="Client Name" required class="w-full bg-slate-900/50 border border-slate-600 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-cyan-500 outline-none">
+                <input type="email" id="clientEmail" placeholder="Client Email" required class="w-full bg-slate-900/50 border border-slate-600 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-cyan-500 outline-none">
+                <input type="tel" id="clientPhone" placeholder="Phone Number" required class="w-full bg-slate-900/50 border border-slate-600 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-cyan-500 outline-none">
+                <input type="text" id="serviceDesc" placeholder="Service (e.g. Cloud Setup)" required class="w-full bg-slate-900/50 border border-slate-600 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-cyan-500 outline-none">
+                <input type="number" id="amount" placeholder="Amount ($)" required class="w-full bg-slate-900/50 border border-slate-600 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-cyan-500 outline-none">
+                
+                <button type="submit" id="submitBtn" class="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold py-3 rounded-lg transition-all active:scale-95">
+                    Generate & Send PDF
                 </button>
             </form>
-            
-            <div id="statusContainer" class="mt-4 p-3 rounded-lg hidden border">
-                <p id="statusMsg" class="text-sm font-medium text-center"></p>
-            </div>
+            <p id="statusMsg" class="mt-4 text-center text-sm hidden"></p>
         </div>
 
         <div class="bg-slate-800/80 backdrop-blur-xl p-8 rounded-2xl shadow-2xl border border-slate-700/50 lg:col-span-2">
-            <h2 class="text-xl font-semibold mb-6 text-white flex items-center">
-                <svg class="w-5 h-5 mr-2 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                Recent Invoices
-            </h2>
+            <h2 class="text-xl font-semibold mb-6 text-white">Recent Invoices</h2>
             <div class="overflow-x-auto rounded-xl border border-slate-700/50">
-                <table class="w-full text-left border-collapse whitespace-nowrap">
-                    <thead class="bg-slate-900/80">
-                        <tr class="text-slate-300 text-sm tracking-wider">
-                            <th class="p-4 font-semibold">Invoice ID</th>
-                            <th class="p-4 font-semibold">Client Details</th>
-                            <th class="p-4 font-semibold">Service</th>
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-slate-900/80 text-slate-300 text-sm">
+                        <tr>
+                            <th class="p-4 font-semibold">ID</th>
+                            <th class="p-4 font-semibold">Client</th>
                             <th class="p-4 font-semibold">Amount</th>
                             <th class="p-4 font-semibold">Status</th>
+                            <th class="p-4 font-semibold">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="invoiceTableBody" class="divide-y divide-slate-700/50">
                         </tbody>
                 </table>
             </div>
-            
-            <div id="emptyState" class="hidden text-center py-12">
-                <svg class="mx-auto h-12 w-12 text-slate-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
-                <p class="text-slate-400 text-sm">No invoices found. Create one to get started.</p>
-            </div>
+            <div id="emptyState" class="hidden text-center py-12 text-slate-500">No invoices yet.</div>
         </div>
-
     </div>
 
     <script>
-        // Handle Form Submission
+        // CREATE INVOICE
         document.getElementById('invoiceForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
-            // UI Elements
-            const submitBtn = document.getElementById('submitBtn');
-            const btnText = document.getElementById('btnText');
-            const btnSpinner = document.getElementById('btnSpinner');
-            const statusContainer = document.getElementById('statusContainer');
             const statusMsg = document.getElementById('statusMsg');
-
-            // Button Functional State: Set to Loading
-            submitBtn.disabled = true;
-            btnText.textContent = "Processing...";
-            btnSpinner.classList.remove('hidden');
-            
-            // Status Message Update
-            statusContainer.className = "mt-4 p-3 rounded-lg block border border-yellow-500/30 bg-yellow-500/10";
-            statusMsg.textContent = "Processing & Sending Email...";
-            statusMsg.className = "text-sm font-medium text-center text-yellow-400";
+            statusMsg.classList.remove('hidden');
+            statusMsg.textContent = "Sending...";
+            statusMsg.className = "mt-4 text-center text-sm text-yellow-400";
 
             const payload = {
                 clientName: document.getElementById('clientName').value,
@@ -127,39 +78,40 @@
             };
 
             try {
-                const response = await fetch('http://localhost:3000/api/create-invoice', {
+                const res = await fetch('http://localhost:3000/api/create-invoice', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
-                
-                if (response.ok) {
-                    statusContainer.className = "mt-4 p-3 rounded-lg block border border-emerald-500/30 bg-emerald-500/10";
-                    statusMsg.textContent = "Invoice Sent Successfully!";
-                    statusMsg.className = "text-sm font-medium text-center text-emerald-400";
+                if (res.ok) {
+                    statusMsg.textContent = "Invoice Sent!";
+                    statusMsg.className = "mt-4 text-center text-sm text-emerald-400";
                     document.getElementById('invoiceForm').reset();
-                    loadDashboardData(); // Refresh table
-                } else {
-                    throw new Error("Server response wasn't OK");
+                    loadDashboardData();
                 }
             } catch (err) {
-                statusContainer.className = "mt-4 p-3 rounded-lg block border border-red-500/30 bg-red-500/10";
-                statusMsg.textContent = "Error sending invoice. Is server running?";
-                statusMsg.className = "text-sm font-medium text-center text-red-400";
-            } finally {
-                // Button Functional State: Restore
-                submitBtn.disabled = false;
-                btnText.textContent = "Generate & Send PDF";
-                btnSpinner.classList.add('hidden');
-                
-                // Hide status after 5 seconds
-                setTimeout(() => {
-                    statusContainer.classList.add('hidden');
-                }, 5000);
+                statusMsg.textContent = "Error connecting to server.";
+                statusMsg.className = "mt-4 text-center text-sm text-red-400";
             }
         });
 
-        // Load Dashboard Data
+        // DELETE FUNCTIONALITY
+        async function deleteInvoice(id) {
+            if (!confirm(`Are you sure you want to delete ${id}?`)) return;
+
+            try {
+                const res = await fetch(`http://localhost:3000/api/invoices/${id}`, {
+                    method: 'DELETE'
+                });
+                if (res.ok) {
+                    loadDashboardData();
+                }
+            } catch (err) {
+                alert("Could not delete. Server error.");
+            }
+        }
+
+        // LOAD TABLE DATA
         async function loadDashboardData() {
             try {
                 const response = await fetch('http://localhost:3000/api/invoices');
@@ -168,38 +120,36 @@
                 const emptyState = document.getElementById('emptyState');
                 
                 tbody.innerHTML = '';
-                
                 if (data.length === 0) {
                     emptyState.classList.remove('hidden');
                 } else {
                     emptyState.classList.add('hidden');
                     data.forEach(inv => {
                         tbody.innerHTML += `
-                            <tr class="hover:bg-slate-700/30 transition-colors duration-150 group">
+                            <tr class="hover:bg-slate-700/30 transition-colors">
                                 <td class="p-4 text-cyan-400 font-medium">${inv.id}</td>
                                 <td class="p-4">
-                                    <div class="font-medium text-white">${inv.clientName}</div>
-                                    <div class="text-xs text-slate-400 mt-0.5">${inv.clientEmail}</div>
-                                    <div class="text-xs text-slate-500">${inv.clientPhone}</div>
+                                    <div class="text-white">${inv.clientName}</div>
+                                    <div class="text-xs text-slate-500">${inv.clientEmail}</div>
                                 </td>
-                                <td class="p-4 text-slate-300">${inv.serviceDesc}</td>
-                                <td class="p-4 font-bold text-white">$${parseFloat(inv.amount).toFixed(2)}</td>
+                                <td class="p-4 font-bold text-white">$${inv.amount}</td>
                                 <td class="p-4">
-                                    <span class="inline-flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium px-2.5 py-1 rounded-full">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-                                        ${inv.status}
-                                    </span>
+                                    <span class="bg-emerald-500/10 text-emerald-400 text-xs px-2 py-1 rounded-full border border-emerald-500/20">${inv.status}</span>
+                                </td>
+                                <td class="p-4">
+                                    <button onclick="deleteInvoice('${inv.id}')" class="text-red-400 hover:text-red-300 transition-colors p-2 hover:bg-red-500/10 rounded-lg">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                    </button>
                                 </td>
                             </tr>
                         `;
                     });
                 }
-            } catch (err) {
-                console.log("Waiting for backend connection...");
-            }
+            } catch (err) {}
         }
 
-        // Initial Load
         loadDashboardData();
     </script>
 </body>
