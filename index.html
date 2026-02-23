@@ -21,7 +21,6 @@
     </style>
 </head>
 <body class="dark bg-white dark:bg-gradient-to-br dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 text-slate-900 dark:text-gray-200 min-h-screen p-4 md:p-8">
-
     <div class="max-w-7xl mx-auto mb-8 flex justify-between items-center">
         <div>
             <h1 class="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-cyan-600 to-blue-600 dark:from-cyan-400 dark:to-blue-500 tracking-tight">
@@ -33,7 +32,6 @@
             <span id="themeIcon">🌙</span>
         </button>
     </div>
-
     <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div class="bg-slate-50 dark:bg-slate-800/80 p-6 rounded-2xl border border-slate-200 dark:border-slate-700/50 shadow-lg">
             <p class="text-slate-500 dark:text-slate-400 text-sm font-medium">Total Revenue</p>
@@ -48,7 +46,6 @@
             <h3 id="invoiceCount" class="text-2xl font-bold text-cyan-600 dark:text-cyan-400 mt-1">0</h3>
         </div>
     </div>
-
     <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div class="bg-slate-50 dark:bg-slate-800/80 backdrop-blur-xl p-8 rounded-2xl shadow-xl dark:shadow-2xl border border-slate-200 dark:border-slate-700/50 lg:col-span-1 h-fit">
             <h2 class="text-xl font-semibold mb-6 text-slate-800 dark:text-white">Create New Invoice</h2>
@@ -58,20 +55,18 @@
                 <input type="tel" id="clientPhone" placeholder="Phone Number" required class="w-full bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-slate-900 dark:text-white outline-none">
                 <input type="text" id="serviceDesc" placeholder="Service (e.g. Cloud Setup)" required class="w-full bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-slate-900 dark:text-white outline-none">
                 <input type="number" id="amount" placeholder="Amount (R)" required class="w-full bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-slate-900 dark:text-white outline-none">
-                
+               
                 <button type="submit" id="submitBtn" class="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold py-3 rounded-lg transition-all shadow-lg shadow-cyan-500/20">
                     Generate, Save & Email PDF
                 </button>
             </form>
             <p id="statusMsg" class="mt-4 text-center text-sm hidden"></p>
         </div>
-
         <div class="bg-slate-50 dark:bg-slate-800/80 backdrop-blur-xl p-8 rounded-2xl shadow-xl dark:shadow-2xl border border-slate-200 dark:border-slate-700/50 lg:col-span-2">
             <div class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
                 <h2 class="text-xl font-semibold text-slate-800 dark:text-white">Recent Invoices</h2>
                 <input type="text" id="searchInput" placeholder="Search invoices..." class="w-full md:w-64 bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600 rounded-lg py-2 px-4 text-sm text-slate-900 dark:text-white outline-none">
             </div>
-
             <div class="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700/50">
                 <table class="w-full text-left border-collapse">
                     <thead class="bg-slate-100 dark:bg-slate-900/80 text-slate-600 dark:text-slate-300 text-sm">
@@ -90,6 +85,37 @@
         </div>
     </div>
 
+    <!-- Invoice Template Modal (shown when you click any client name) -->
+    <div id="invoiceModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-[9999]">
+        <div class="bg-white dark:bg-slate-900 max-w-md w-full mx-4 rounded-3xl overflow-hidden shadow-2xl">
+            <!-- Invoice Header -->
+            <div class="bg-gradient-to-r from-cyan-600 to-blue-600 px-8 py-6 text-white">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h1 class="text-3xl font-bold tracking-tighter">AURABILL</h1>
+                        <p class="text-xs tracking-[3px] opacity-75 -mt-1">INVOICE</p>
+                    </div>
+                    <button onclick="closeModal()" class="text-4xl leading-none text-white/80 hover:text-white">×</button>
+                </div>
+            </div>
+
+            <!-- Invoice Body -->
+            <div id="modalContent" class="p-8 text-slate-800 dark:text-slate-200"></div>
+
+            <!-- Footer -->
+            <div class="border-t border-slate-200 dark:border-slate-700 px-8 py-6 flex gap-3 bg-slate-50 dark:bg-slate-950">
+                <button onclick="closeModal()" 
+                        class="flex-1 py-3.5 text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-700 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+                    Close
+                </button>
+                <button onclick="downloadCurrentInvoice()" 
+                        class="flex-1 py-3.5 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold rounded-2xl hover:brightness-110 transition">
+                    Download PDF
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyAxBT0oESoL62oz_x_Z8cMtdENWZPx4tMI",
@@ -103,11 +129,12 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
         let allInvoices = [];
+        let currentInvoice = null;   // ← for modal
 
         async function processInvoiceAndEmail(data) {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
-            
+           
             doc.setFont("helvetica", "bold");
             doc.text("AURABILL INVOICE", 20, 30);
             doc.setFont("helvetica", "normal");
@@ -118,11 +145,9 @@
             doc.text(data.clientEmail, 20, 84);
             doc.text("SERVICE:", 20, 100);
             doc.text(`${data.serviceDesc}: R ${parseFloat(data.amount).toFixed(2)}`, 20, 107);
-            
+           
             doc.save(`Invoice_${data.id}.pdf`);
-
             const pdfBase64 = doc.output('datauristring').split(',')[1];
-
             const templateParams = {
                 to_email: data.clientEmail,
                 client_name: data.clientName,
@@ -130,7 +155,6 @@
                 amount: data.amount,
                 content: pdfBase64
             };
-
             return emailjs.send('YOUR_SERVICE_ID', 'YOUR_TEMPLATE_ID', templateParams);
         }
 
@@ -142,7 +166,6 @@
             statusMsg.textContent = "Processing & Emailing...";
             statusMsg.className = "mt-4 text-center text-sm text-yellow-500";
             submitBtn.disabled = true;
-
             const newInvoiceRef = db.ref('invoices').push();
             const data = {
                 id: newInvoiceRef.key.slice(-6).toUpperCase(),
@@ -154,7 +177,6 @@
                 status: 'Sent',
                 timestamp: Date.now()
             };
-
             newInvoiceRef.set(data, async (error) => {
                 if (error) {
                     statusMsg.textContent = "Database Error.";
@@ -198,9 +220,16 @@
                 tbody.innerHTML += `
                     <tr class="hover:bg-slate-100 dark:hover:bg-slate-700/30">
                         <td class="p-4 font-mono text-cyan-500">${inv.id}</td>
-                        <td class="p-4"><b>${inv.clientName}</b><br><small>${inv.clientEmail}</small></td>
+                        <!-- Click client name → shows invoice template -->
+                        <td onclick="viewInvoice('${inv.key}')" 
+                            class="p-4 cursor-pointer hover:text-cyan-600 dark:hover:text-cyan-400 transition">
+                            <b>${inv.clientName}</b><br>
+                            <small class="text-slate-500 dark:text-slate-400">${inv.clientEmail}</small>
+                        </td>
                         <td class="p-4 font-bold">R ${parseFloat(inv.amount).toFixed(2)}</td>
-                        <td class="p-4"><span class="px-2 py-1 rounded-full border text-[10px] uppercase">${inv.status}</span></td>
+                        <td class="p-4">
+                            <span class="px-2 py-1 rounded-full border text-[10px] uppercase">${inv.status}</span>
+                        </td>
                         <td class="p-4 text-center">
                             <button onclick="deleteInvoice('${inv.key}')" class="text-red-400 hover:text-red-600">Delete</button>
                         </td>
@@ -208,8 +237,110 @@
             });
         }
 
-        function deleteInvoice(key) { if(confirm("Delete?")) db.ref('invoices/' + key).remove(); }
-        function toggleTheme() { document.body.classList.toggle('dark'); }
+        // ==================== NEW: Invoice Template Modal Functions ====================
+        function viewInvoice(key) {
+            currentInvoice = allInvoices.find(inv => inv.key === key);
+            if (!currentInvoice) return;
+
+            const date = new Date(currentInvoice.timestamp || Date.now()).toLocaleDateString('en-ZA');
+            const modalContent = document.getElementById('modalContent');
+
+            modalContent.innerHTML = `
+                <div class="space-y-8">
+                    <!-- Invoice # & Date -->
+                    <div class="flex justify-between">
+                        <div>
+                            <div class="text-xs uppercase tracking-widest text-slate-500 dark:text-slate-400">INVOICE #</div>
+                            <div class="text-4xl font-mono font-bold text-slate-900 dark:text-white">#INV-${currentInvoice.id}</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-xs uppercase tracking-widest text-slate-500 dark:text-slate-400">DATE</div>
+                            <div class="font-medium">${date}</div>
+                        </div>
+                    </div>
+
+                    <!-- Bill To -->
+                    <div>
+                        <div class="text-xs uppercase text-slate-500 dark:text-slate-400 mb-2">BILL TO</div>
+                        <div class="font-semibold text-xl">${currentInvoice.clientName}</div>
+                        <div class="text-slate-600 dark:text-slate-300">${currentInvoice.clientEmail}</div>
+                        ${currentInvoice.clientPhone ? `<div class="text-slate-600 dark:text-slate-300">${currentInvoice.clientPhone}</div>` : ''}
+                    </div>
+
+                    <!-- Service Line -->
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-slate-200 dark:border-slate-700">
+                                <th class="text-left py-3 text-xs font-medium text-slate-500 dark:text-slate-400">DESCRIPTION</th>
+                                <th class="text-right py-3 text-xs font-medium text-slate-500 dark:text-slate-400">AMOUNT</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="py-6 text-lg">${currentInvoice.serviceDesc}</td>
+                                <td class="py-6 text-right font-bold text-xl">R ${parseFloat(currentInvoice.amount).toFixed(2)}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- Total -->
+                    <div class="flex justify-end border-t border-slate-200 dark:border-slate-700 pt-6">
+                        <div class="text-right">
+                            <div class="text-xs text-slate-500 dark:text-slate-400">TOTAL DUE</div>
+                            <div class="text-4xl font-bold text-emerald-600 dark:text-emerald-400">R ${parseFloat(currentInvoice.amount).toFixed(2)}</div>
+                        </div>
+                    </div>
+
+                    <!-- Status badge -->
+                    <div class="flex justify-end">
+                        <span class="px-6 py-1.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-xs font-medium rounded-full">
+                            ${currentInvoice.status}
+                        </span>
+                    </div>
+
+                    <div class="pt-8 text-center text-xs text-slate-400 dark:text-slate-500">
+                        Thank you for your business • AuraBill IT Solutions
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('invoiceModal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('invoiceModal').classList.add('hidden');
+        }
+
+        function downloadCurrentInvoice() {
+            if (!currentInvoice) return;
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+
+            doc.setFont("helvetica", "bold");
+            doc.text("AURABILL INVOICE", 20, 30);
+            doc.setFont("helvetica", "normal");
+            doc.text(`Invoice ID: #INV-${currentInvoice.id}`, 20, 45);
+            doc.text(`Date: ${new Date(currentInvoice.timestamp || Date.now()).toLocaleDateString()}`, 20, 52);
+            doc.text("BILL TO:", 20, 70);
+            doc.text(currentInvoice.clientName, 20, 77);
+            doc.text(currentInvoice.clientEmail, 20, 84);
+            if (currentInvoice.clientPhone) doc.text(currentInvoice.clientPhone, 20, 91);
+            doc.text("SERVICE:", 20, 110);
+            doc.text(`${currentInvoice.serviceDesc}: R ${parseFloat(currentInvoice.amount).toFixed(2)}`, 20, 117);
+            doc.setFont("helvetica", "bold");
+            doc.text(`TOTAL: R ${parseFloat(currentInvoice.amount).toFixed(2)}`, 20, 140);
+
+            doc.save(`Invoice_${currentInvoice.id}.pdf`);
+            // Optional: close modal after download
+            // closeModal();
+        }
+
+        function deleteInvoice(key) { 
+            if(confirm("Delete this invoice?")) db.ref('invoices/' + key).remove(); 
+        }
+        function toggleTheme() { 
+            document.body.classList.toggle('dark'); 
+        }
     </script>
 </body>
 </html>
