@@ -265,7 +265,7 @@
                     } else {
                         try {
                             await processInvoiceAndEmail(data);
-                            showMessage("Invoice successfully sent to client!");
+                            showMessage("Invoice successfully updated and sent to client!");
                             document.getElementById('invoiceForm').reset();
                             document.getElementById('itemsContainer').innerHTML = '';
                             addItemRow();
