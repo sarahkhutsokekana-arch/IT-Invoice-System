@@ -3,12 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AuraBill | Admin Dashboard</title>
+    <title>Protocol Pay | Admin Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <script>
+        // Initialize EmailJS with your Public Key
+        (function() {
+            emailjs.init("YOUR_PUBLIC_KEY"); // Replace with your EmailJS Public Key
+        })();
         tailwind.config = { darkMode: 'class' }
     </script>
     <style>
@@ -56,7 +61,7 @@
                 <input type="number" id="amount" placeholder="Amount (R)" required class="w-full bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-slate-900 dark:text-white outline-none">
                 
                 <button type="submit" id="submitBtn" class="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold py-3 rounded-lg transition-all shadow-lg shadow-cyan-500/20">
-                    Generate, Save & Download
+                    Generate, Save & Email PDF
                 </button>
             </form>
             <p id="statusMsg" class="mt-4 text-center text-sm hidden"></p>
@@ -101,51 +106,48 @@
         const db = firebase.database();
         let allInvoices = [];
 
-        // --- PDF GENERATION FUNCTION ---
-        function generatePDF(data) {
+        // --- PDF GENERATION & EMAIL LOGIC ---
+        async function processInvoiceAndEmail(data) {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
             
+            // Generate Invoice Content
             doc.setFont("helvetica", "bold");
-            doc.setFontSize(22);
             doc.text("AURABILL INVOICE", 20, 30);
-            
-            doc.setFontSize(12);
             doc.setFont("helvetica", "normal");
             doc.text(`Invoice ID: #INV-${data.id}`, 20, 45);
             doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, 52);
-
-            doc.line(20, 60, 190, 60);
-
-            doc.setFont("helvetica", "bold");
             doc.text("BILL TO:", 20, 70);
-            doc.setFont("helvetica", "normal");
             doc.text(data.clientName, 20, 77);
             doc.text(data.clientEmail, 20, 84);
-            doc.text(data.clientPhone, 20, 91);
-
-            doc.setFont("helvetica", "bold");
-            doc.text("DESCRIPTION", 20, 110);
-            doc.text("TOTAL", 150, 110);
-            doc.line(20, 112, 190, 112);
+            doc.text("SERVICE:", 20, 100);
+            doc.text(`${data.serviceDesc}: R ${parseFloat(data.amount).toFixed(2)}`, 20, 107);
             
-            doc.setFont("helvetica", "normal");
-            doc.text(data.serviceDesc, 20, 122);
-            doc.text(`R ${parseFloat(data.amount).toFixed(2)}`, 150, 122);
+            // Download for Admin
+            doc.save(`Invoice_${data.id}.pdf`);
 
-            doc.setFont("helvetica", "bold");
-            doc.text(`TOTAL DUE: R ${parseFloat(data.amount).toFixed(2)}`, 130, 140);
-            
-            doc.save(`Invoice_${data.clientName.replace(/\s+/g, '_')}.pdf`);
+            // Convert to Base64 for EmailJS
+            const pdfBase64 = doc.output('datauristring');
+
+            // Send via EmailJS
+            const templateParams = {
+                client_name: data.clientName,
+                client_email: data.clientEmail,
+                invoice_id: data.id,
+                content: pdfBase64 // This attaches the file if template is set up correctly
+            };
+
+            return emailjs.send('YOUR_SERVICE_ID', 'YOUR_TEMPLATE_ID', templateParams);
         }
 
-        // --- CREATE & SAVE (FIREBASE + PDF) ---
+        // --- FORM SUBMISSION ---
         document.getElementById('invoiceForm').addEventListener('submit', (e) => {
             e.preventDefault();
             const statusMsg = document.getElementById('statusMsg');
             const submitBtn = document.getElementById('submitBtn');
             statusMsg.classList.remove('hidden');
-            statusMsg.textContent = "Processing...";
+            statusMsg.textContent = "Processing & Emailing...";
+            statusMsg.className = "mt-4 text-center text-sm text-yellow-500";
             submitBtn.disabled = true;
 
             const newInvoiceRef = db.ref('invoices').push();
@@ -160,18 +162,28 @@
                 timestamp: Date.now()
             };
 
-            newInvoiceRef.set(data, (error) => {
-                submitBtn.disabled = false;
-                if (!error) {
-                    generatePDF(data); // Download PDF
-                    statusMsg.textContent = "Saved & Downloaded Successfully!";
-                    statusMsg.className = "mt-4 text-center text-sm text-emerald-500";
-                    document.getElementById('invoiceForm').reset();
+            newInvoiceRef.set(data, async (error) => {
+                if (error) {
+                    statusMsg.textContent = "Database Error.";
+                    submitBtn.disabled = false;
+                } else {
+                    try {
+                        await processInvoiceAndEmail(data);
+                        statusMsg.textContent = "Saved, Downloaded & Emailed!";
+                        statusMsg.className = "mt-4 text-center text-sm text-emerald-500";
+                        document.getElementById('invoiceForm').reset();
+                    } catch (err) {
+                        statusMsg.textContent = "Saved & Downloaded, but Email failed.";
+                        statusMsg.className = "mt-4 text-center text-sm text-amber-500";
+                        console.error(err);
+                    } finally {
+                        submitBtn.disabled = false;
+                    }
                 }
             });
         });
 
-        // Real-time Data Sync
+        // Dashboard Data Loading (unchanged)
         db.ref('invoices').on('value', (snapshot) => {
             allInvoices = [];
             let totalRev = 0, pendingBal = 0;
