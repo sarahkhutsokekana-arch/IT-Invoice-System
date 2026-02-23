@@ -53,9 +53,11 @@
                 <input type="text" id="clientName" placeholder="Client Name" required class="w-full bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-slate-900 dark:text-white outline-none">
                 <input type="email" id="clientEmail" placeholder="Client Email" required class="w-full bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-slate-900 dark:text-white outline-none">
                 <input type="tel" id="clientPhone" placeholder="Phone Number" required class="w-full bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-slate-900 dark:text-white outline-none">
-                <input type="text" id="serviceDesc" placeholder="Service (e.g. Cloud Setup)" required class="w-full bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-slate-900 dark:text-white outline-none">
-                <input type="number" id="amount" placeholder="Amount (R)" required class="w-full bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-slate-900 dark:text-white outline-none">
-               
+                <div class="text-sm font-medium text-slate-800 dark:text-white">Services</div>
+                <div id="itemsContainer" class="space-y-4"></div>
+                <button type="button" id="addItem" class="w-full bg-blue-500 hover:bg-blue-400 text-slate-900 font-bold py-2 rounded-lg transition-all shadow-lg shadow-blue-500/20">
+                    Add Service Item
+                </button>
                 <button type="submit" id="submitBtn" class="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold py-3 rounded-lg transition-all shadow-lg shadow-cyan-500/20">
                     Generate, Save & Email PDF
                 </button>
@@ -84,7 +86,6 @@
             <div id="emptyState" class="hidden text-center py-12 text-slate-500 italic">No invoices found.</div>
         </div>
     </div>
-
     <!-- Invoice Template Modal (shown when you click any client name) -->
     <div id="invoiceModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-[9999]">
         <div class="bg-white dark:bg-slate-900 max-w-md w-full mx-4 rounded-3xl overflow-hidden shadow-2xl">
@@ -98,24 +99,21 @@
                     <button onclick="closeModal()" class="text-4xl leading-none text-white/80 hover:text-white">×</button>
                 </div>
             </div>
-
             <!-- Invoice Body -->
             <div id="modalContent" class="p-8 text-slate-800 dark:text-slate-200"></div>
-
             <!-- Footer -->
             <div class="border-t border-slate-200 dark:border-slate-700 px-8 py-6 flex gap-3 bg-slate-50 dark:bg-slate-950">
-                <button onclick="closeModal()" 
+                <button onclick="closeModal()"
                         class="flex-1 py-3.5 text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-700 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition">
                     Close
                 </button>
-                <button onclick="downloadCurrentInvoice()" 
+                <button onclick="downloadCurrentInvoice()"
                         class="flex-1 py-3.5 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold rounded-2xl hover:brightness-110 transition">
                     Download PDF
                 </button>
             </div>
         </div>
     </div>
-
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyAxBT0oESoL62oz_x_Z8cMtdENWZPx4tMI",
@@ -129,12 +127,33 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
         let allInvoices = [];
-        let currentInvoice = null;   // ← for modal
+        let currentInvoice = null; // ← for modal
+        const VAT_RATE = 0.15; // 15% VAT for South Africa
+
+        // Function to add a new service item row
+        function addItemRow(desc = '', amount = '') {
+            const container = document.getElementById('itemsContainer');
+            const row = document.createElement('div');
+            row.className = 'flex space-x-2 items-center';
+            row.innerHTML = `
+                <input type="text" placeholder="Service (e.g. Cloud Setup)" value="${desc}" class="flex-1 bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-slate-900 dark:text-white outline-none service-desc">
+                <input type="number" placeholder="Amount (R)" value="${amount}" class="w-32 bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-slate-900 dark:text-white outline-none service-amount">
+                <button type="button" class="remove-item text-red-500 hover:text-red-700">Remove</button>
+            `;
+            container.appendChild(row);
+            row.querySelector('.remove-item').addEventListener('click', () => row.remove());
+        }
+
+        // Add initial item row
+        addItemRow();
+
+        // Add item button listener
+        document.getElementById('addItem').addEventListener('click', () => addItemRow());
 
         async function processInvoiceAndEmail(data) {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
-           
+          
             doc.setFont("helvetica", "bold");
             doc.text("AURABILL INVOICE", 20, 30);
             doc.setFont("helvetica", "normal");
@@ -143,21 +162,32 @@
             doc.text("BILL TO:", 20, 70);
             doc.text(data.clientName, 20, 77);
             doc.text(data.clientEmail, 20, 84);
-            doc.text("SERVICE:", 20, 100);
-            doc.text(`${data.serviceDesc}: R ${parseFloat(data.amount).toFixed(2)}`, 20, 107);
-           
+            if (data.clientPhone) doc.text(data.clientPhone, 20, 91);
+            doc.text("SERVICES:", 20, 110);
+            let yPos = 117;
+            data.services.forEach(service => {
+                doc.text(`${service.desc}: R ${parseFloat(service.amount).toFixed(2)}`, 20, yPos);
+                yPos += 7;
+            });
+            yPos += 7;
+            doc.text(`Subtotal: R ${parseFloat(data.subtotal).toFixed(2)}`, 20, yPos);
+            yPos += 7;
+            doc.text(`VAT (15%): R ${parseFloat(data.vat).toFixed(2)}`, 20, yPos);
+            yPos += 7;
+            doc.setFont("helvetica", "bold");
+            doc.text(`TOTAL: R ${parseFloat(data.total).toFixed(2)}`, 20, yPos);
+          
             doc.save(`Invoice_${data.id}.pdf`);
             const pdfBase64 = doc.output('datauristring').split(',')[1];
             const templateParams = {
                 to_email: data.clientEmail,
                 client_name: data.clientName,
                 invoice_id: data.id,
-                amount: data.amount,
+                amount: data.total,
                 content: pdfBase64
             };
             return emailjs.send('YOUR_SERVICE_ID', 'YOUR_TEMPLATE_ID', templateParams);
         }
-
         document.getElementById('invoiceForm').addEventListener('submit', (e) => {
             e.preventDefault();
             const statusMsg = document.getElementById('statusMsg');
@@ -167,13 +197,33 @@
             statusMsg.className = "mt-4 text-center text-sm text-yellow-500";
             submitBtn.disabled = true;
             const newInvoiceRef = db.ref('invoices').push();
+            const services = [];
+            let subtotal = 0;
+            document.querySelectorAll('#itemsContainer > div').forEach(row => {
+                const desc = row.querySelector('.service-desc').value.trim();
+                const amount = parseFloat(row.querySelector('.service-amount').value) || 0;
+                if (desc && amount > 0) {
+                    services.push({ desc, amount });
+                    subtotal += amount;
+                }
+            });
+            if (services.length === 0) {
+                statusMsg.textContent = "Add at least one service item.";
+                statusMsg.className = "mt-4 text-center text-sm text-red-500";
+                submitBtn.disabled = false;
+                return;
+            }
+            const vat = subtotal * VAT_RATE;
+            const total = subtotal + vat;
             const data = {
                 id: newInvoiceRef.key.slice(-6).toUpperCase(),
                 clientName: document.getElementById('clientName').value,
                 clientEmail: document.getElementById('clientEmail').value,
                 clientPhone: document.getElementById('clientPhone').value,
-                serviceDesc: document.getElementById('serviceDesc').value,
-                amount: document.getElementById('amount').value,
+                services,
+                subtotal,
+                vat,
+                total,
                 status: 'Sent',
                 timestamp: Date.now()
             };
@@ -187,6 +237,8 @@
                         statusMsg.textContent = "Invoice successfully sent to client!";
                         statusMsg.className = "mt-4 text-center text-sm text-emerald-500";
                         document.getElementById('invoiceForm').reset();
+                        document.getElementById('itemsContainer').innerHTML = '';
+                        addItemRow();
                     } catch (err) {
                         statusMsg.textContent = "Email failed. Verify EmailJS settings.";
                         statusMsg.className = "mt-4 text-center text-sm text-red-500";
@@ -197,22 +249,20 @@
                 }
             });
         });
-
         db.ref('invoices').on('value', (snapshot) => {
             allInvoices = [];
             let totalRev = 0, pendingBal = 0;
             snapshot.forEach((child) => {
                 const val = child.val();
                 allInvoices.push({ ...val, key: child.key });
-                totalRev += parseFloat(val.amount);
-                if (val.status !== 'Paid') pendingBal += parseFloat(val.amount);
+                totalRev += parseFloat(val.total || 0);
+                if (val.status !== 'Paid') pendingBal += parseFloat(val.total || 0);
             });
             document.getElementById('totalRevenue').textContent = `R ${totalRev.toFixed(2)}`;
             document.getElementById('pendingBalance').textContent = `R ${pendingBal.toFixed(2)}`;
             document.getElementById('invoiceCount').textContent = allInvoices.length;
             renderTable();
         });
-
         function renderTable() {
             const tbody = document.getElementById('invoiceTableBody');
             tbody.innerHTML = '';
@@ -221,12 +271,12 @@
                     <tr class="hover:bg-slate-100 dark:hover:bg-slate-700/30">
                         <td class="p-4 font-mono text-cyan-500">${inv.id}</td>
                         <!-- Click client name → shows invoice template -->
-                        <td onclick="viewInvoice('${inv.key}')" 
+                        <td onclick="viewInvoice('${inv.key}')"
                             class="p-4 cursor-pointer hover:text-cyan-600 dark:hover:text-cyan-400 transition">
                             <b>${inv.clientName}</b><br>
                             <small class="text-slate-500 dark:text-slate-400">${inv.clientEmail}</small>
                         </td>
-                        <td class="p-4 font-bold">R ${parseFloat(inv.amount).toFixed(2)}</td>
+                        <td class="p-4 font-bold">R ${parseFloat(inv.total || 0).toFixed(2)}</td>
                         <td class="p-4">
                             <span class="px-2 py-1 rounded-full border text-[10px] uppercase">${inv.status}</span>
                         </td>
@@ -236,15 +286,21 @@
                     </tr>`;
             });
         }
-
         // ==================== NEW: Invoice Template Modal Functions ====================
         function viewInvoice(key) {
             currentInvoice = allInvoices.find(inv => inv.key === key);
             if (!currentInvoice) return;
-
             const date = new Date(currentInvoice.timestamp || Date.now()).toLocaleDateString('en-ZA');
             const modalContent = document.getElementById('modalContent');
-
+            let servicesHtml = '';
+            currentInvoice.services.forEach(service => {
+                servicesHtml += `
+                    <tr>
+                        <td class="py-6 text-lg">${service.desc}</td>
+                        <td class="py-6 text-right font-bold text-xl">R ${parseFloat(service.amount).toFixed(2)}</td>
+                    </tr>
+                `;
+            });
             modalContent.innerHTML = `
                 <div class="space-y-8">
                     <!-- Invoice # & Date -->
@@ -258,7 +314,6 @@
                             <div class="font-medium">${date}</div>
                         </div>
                     </div>
-
                     <!-- Bill To -->
                     <div>
                         <div class="text-xs uppercase text-slate-500 dark:text-slate-400 mb-2">BILL TO</div>
@@ -266,7 +321,6 @@
                         <div class="text-slate-600 dark:text-slate-300">${currentInvoice.clientEmail}</div>
                         ${currentInvoice.clientPhone ? `<div class="text-slate-600 dark:text-slate-300">${currentInvoice.clientPhone}</div>` : ''}
                     </div>
-
                     <!-- Service Line -->
                     <table class="w-full">
                         <thead>
@@ -276,46 +330,44 @@
                             </tr>
                         </thead>
                         <tbody>
+                            ${servicesHtml}
                             <tr>
-                                <td class="py-6 text-lg">${currentInvoice.serviceDesc}</td>
-                                <td class="py-6 text-right font-bold text-xl">R ${parseFloat(currentInvoice.amount).toFixed(2)}</td>
+                                <td class="py-6 text-lg font-medium">Subtotal</td>
+                                <td class="py-6 text-right font-medium">R ${parseFloat(currentInvoice.subtotal).toFixed(2)}</td>
+                            </tr>
+                            <tr>
+                                <td class="py-6 text-lg font-medium">VAT (15%)</td>
+                                <td class="py-6 text-right font-medium">R ${parseFloat(currentInvoice.vat).toFixed(2)}</td>
                             </tr>
                         </tbody>
                     </table>
-
                     <!-- Total -->
                     <div class="flex justify-end border-t border-slate-200 dark:border-slate-700 pt-6">
                         <div class="text-right">
                             <div class="text-xs text-slate-500 dark:text-slate-400">TOTAL DUE</div>
-                            <div class="text-4xl font-bold text-emerald-600 dark:text-emerald-400">R ${parseFloat(currentInvoice.amount).toFixed(2)}</div>
+                            <div class="text-4xl font-bold text-emerald-600 dark:text-emerald-400">R ${parseFloat(currentInvoice.total).toFixed(2)}</div>
                         </div>
                     </div>
-
                     <!-- Status badge -->
                     <div class="flex justify-end">
                         <span class="px-6 py-1.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-xs font-medium rounded-full">
                             ${currentInvoice.status}
                         </span>
                     </div>
-
                     <div class="pt-8 text-center text-xs text-slate-400 dark:text-slate-500">
                         Thank you for your business • AuraBill IT Solutions
                     </div>
                 </div>
             `;
-
             document.getElementById('invoiceModal').classList.remove('hidden');
         }
-
         function closeModal() {
             document.getElementById('invoiceModal').classList.add('hidden');
         }
-
         function downloadCurrentInvoice() {
             if (!currentInvoice) return;
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
-
             doc.setFont("helvetica", "bold");
             doc.text("AURABILL INVOICE", 20, 30);
             doc.setFont("helvetica", "normal");
@@ -325,21 +377,28 @@
             doc.text(currentInvoice.clientName, 20, 77);
             doc.text(currentInvoice.clientEmail, 20, 84);
             if (currentInvoice.clientPhone) doc.text(currentInvoice.clientPhone, 20, 91);
-            doc.text("SERVICE:", 20, 110);
-            doc.text(`${currentInvoice.serviceDesc}: R ${parseFloat(currentInvoice.amount).toFixed(2)}`, 20, 117);
+            doc.text("SERVICES:", 20, 110);
+            let yPos = 117;
+            currentInvoice.services.forEach(service => {
+                doc.text(`${service.desc}: R ${parseFloat(service.amount).toFixed(2)}`, 20, yPos);
+                yPos += 7;
+            });
+            yPos += 7;
+            doc.text(`Subtotal: R ${parseFloat(currentInvoice.subtotal).toFixed(2)}`, 20, yPos);
+            yPos += 7;
+            doc.text(`VAT (15%): R ${parseFloat(currentInvoice.vat).toFixed(2)}`, 20, yPos);
+            yPos += 7;
             doc.setFont("helvetica", "bold");
-            doc.text(`TOTAL: R ${parseFloat(currentInvoice.amount).toFixed(2)}`, 20, 140);
-
+            doc.text(`TOTAL: R ${parseFloat(currentInvoice.total).toFixed(2)}`, 20, yPos);
             doc.save(`Invoice_${currentInvoice.id}.pdf`);
             // Optional: close modal after download
             // closeModal();
         }
-
-        function deleteInvoice(key) { 
-            if(confirm("Delete this invoice?")) db.ref('invoices/' + key).remove(); 
+        function deleteInvoice(key) {
+            if(confirm("Delete this invoice?")) db.ref('invoices/' + key).remove();
         }
-        function toggleTheme() { 
-            document.body.classList.toggle('dark'); 
+        function toggleTheme() {
+            document.body.classList.toggle('dark');
         }
     </script>
 </body>
