@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AuraBill | Admin Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -46,7 +48,6 @@
     </div>
 
     <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
         <div class="bg-slate-50 dark:bg-slate-800/80 backdrop-blur-xl p-8 rounded-2xl shadow-xl dark:shadow-2xl border border-slate-200 dark:border-slate-700/50 lg:col-span-1 h-fit">
             <h2 class="text-xl font-semibold mb-6 text-slate-800 dark:text-white flex items-center">
                 Create New Invoice
@@ -59,7 +60,7 @@
                 <input type="number" id="amount" placeholder="Amount (R)" required class="w-full bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-slate-900 dark:text-white focus:ring-2 focus:ring-cyan-500 outline-none transition-all">
                 
                 <button type="submit" id="submitBtn" class="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold py-3 rounded-lg transition-all active:scale-95 shadow-lg shadow-cyan-500/20">
-                    Generate & Send PDF
+                    Generate & Save Invoice
                 </button>
             </form>
             <p id="statusMsg" class="mt-4 text-center text-sm hidden"></p>
@@ -93,10 +94,22 @@
                 No invoices found in the system.
             </div>
         </div>
-
     </div>
 
     <script>
+        // --- FIREBASE INITIALIZATION ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyAxBT0oESoL62oz_x_Z8cMtdENWZPx4tMI",
+            authDomain: "pinotp-d7ef5.firebaseapp.com",
+            databaseURL: "https://pinotp-d7ef5-default-rtdb.firebaseio.com",
+            projectId: "pinotp-d7ef5",
+            storageBucket: "pinotp-d7ef5.firebasestorage.app",
+            messagingSenderId: "708458917827",
+            appId: "1:708458917827:web:375de278577df0adcf9776"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
         let allInvoices = [];
 
         // --- THEME LOGIC ---
@@ -113,84 +126,62 @@
                 localStorage.setItem('theme', 'dark');
             }
         }
-
         if (localStorage.getItem('theme') === 'light') {
             document.body.classList.remove('dark');
             document.getElementById('themeIcon').textContent = '☀️';
         }
 
-        // --- PDF VIEW LOGIC ---
+        // --- PDF LOGIC (Placeholder) ---
         function viewInvoicePDF(id) {
-            // Assumes backend serves PDF at this URL
-            window.open(`http://localhost:3000/api/invoices/${id}/pdf`, '_blank');
+            alert("PDF generation requires a backend cloud function. Viewing raw data for ID: " + id);
         }
 
-        // --- STATUS TOGGLE LOGIC ---
-        async function togglePaid(id, currentStatus) {
-            const newStatus = currentStatus === 'Paid' ? 'Sent' : 'Paid';
-            try {
-                await fetch(`http://localhost:3000/api/invoices/${id}/status`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ status: newStatus })
-                });
-                loadDashboardData();
-            } catch (err) {
-                console.error("Failed to update status");
-                loadDashboardData(); 
-            }
-        }
-
-        // --- CREATE INVOICE LOGIC ---
-        document.getElementById('invoiceForm').addEventListener('submit', async (e) => {
+        // --- CREATE INVOICE (FIREBASE) ---
+        document.getElementById('invoiceForm').addEventListener('submit', (e) => {
             e.preventDefault();
             const statusMsg = document.getElementById('statusMsg');
             const submitBtn = document.getElementById('submitBtn');
 
             statusMsg.classList.remove('hidden');
-            statusMsg.textContent = "Processing...";
+            statusMsg.textContent = "Saving to Firebase...";
             statusMsg.className = "mt-4 text-center text-sm text-yellow-600 dark:text-yellow-400";
             submitBtn.disabled = true;
 
+            const newInvoiceRef = db.ref('invoices').push();
             const payload = {
+                id: newInvoiceRef.key.slice(-6).toUpperCase(), // Short ID from Firebase key
                 clientName: document.getElementById('clientName').value,
                 clientEmail: document.getElementById('clientEmail').value,
                 clientPhone: document.getElementById('clientPhone').value,
                 serviceDesc: document.getElementById('serviceDesc').value,
                 amount: document.getElementById('amount').value,
+                status: 'Sent',
+                timestamp: Date.now()
             };
 
-            try {
-                const res = await fetch('http://localhost:3000/api/create-invoice', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                if (res.ok) {
-                    statusMsg.textContent = "Invoice Sent Successfully!";
+            newInvoiceRef.set(payload, (error) => {
+                submitBtn.disabled = false;
+                if (error) {
+                    statusMsg.textContent = "Error saving data.";
+                    statusMsg.className = "mt-4 text-center text-sm text-red-600 dark:text-red-400";
+                } else {
+                    statusMsg.textContent = "Invoice Saved Successfully!";
                     statusMsg.className = "mt-4 text-center text-sm text-emerald-600 dark:text-emerald-400";
                     document.getElementById('invoiceForm').reset();
-                    loadDashboardData();
-                } else {
-                    throw new Error("Server error");
                 }
-            } catch (err) {
-                statusMsg.textContent = "Error: Check backend connection.";
-                statusMsg.className = "mt-4 text-center text-sm text-red-600 dark:text-red-400";
-            } finally {
-                submitBtn.disabled = false;
-            }
+            });
         });
 
-        // --- DELETE LOGIC ---
-        async function deleteInvoice(id) {
-            if (!confirm(`Are you sure you want to delete ${id}?`)) return;
-            try {
-                const res = await fetch(`http://localhost:3000/api/invoices/${id}`, { method: 'DELETE' });
-                if (res.ok) loadDashboardData();
-            } catch (err) {
-                alert("Could not connect to server to delete.");
+        // --- TOGGLE STATUS (FIREBASE) ---
+        function togglePaid(firebaseKey, currentStatus) {
+            const newStatus = currentStatus === 'Paid' ? 'Sent' : 'Paid';
+            db.ref('invoices/' + firebaseKey).update({ status: newStatus });
+        }
+
+        // --- DELETE (FIREBASE) ---
+        function deleteInvoice(firebaseKey) {
+            if (confirm("Delete this invoice permanently?")) {
+                db.ref('invoices/' + firebaseKey).remove();
             }
         }
 
@@ -208,7 +199,6 @@
             const term = searchTerm.toLowerCase();
             const filtered = allInvoices.filter(inv => 
                 inv.clientName.toLowerCase().includes(term) || 
-                inv.clientEmail.toLowerCase().includes(term) || 
                 inv.id.toString().includes(term)
             );
 
@@ -217,34 +207,24 @@
             } else {
                 emptyState.classList.add('hidden');
                 filtered.forEach(inv => {
-                    const amount = parseFloat(inv.amount) || 0;
                     const isPaid = inv.status === 'Paid';
                     tbody.innerHTML += `
-                        <tr class="hover:bg-slate-100 dark:hover:bg-slate-700/30 transition-colors group">
+                        <tr class="hover:bg-slate-100 dark:hover:bg-slate-700/30 transition-colors">
                             <td class="p-4 text-cyan-600 dark:text-cyan-400 font-mono text-sm">${inv.id}</td>
                             <td class="p-4">
                                 <div class="text-slate-900 dark:text-white font-medium">${inv.clientName}</div>
                                 <div class="text-xs text-slate-500">${inv.clientEmail}</div>
                             </td>
-                            <td class="p-4 font-bold text-slate-900 dark:text-white">R ${amount.toFixed(2)}</td>
+                            <td class="p-4 font-bold text-slate-900 dark:text-white">R ${parseFloat(inv.amount).toFixed(2)}</td>
                             <td class="p-4">
-                                <span class="${isPaid ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'} text-[10px] uppercase tracking-widest px-2 py-1 rounded-full border">
+                                <span class="${isPaid ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'} text-[10px] uppercase tracking-widest px-2 py-1 rounded-full border border-current">
                                     ${inv.status}
                                 </span>
                             </td>
                             <td class="p-4 flex items-center justify-center space-x-2">
-                                <button onclick="viewInvoicePDF('${inv.id}')" title="View PDF" class="p-2 text-slate-400 hover:text-cyan-500 hover:bg-cyan-500/10 rounded-lg transition-colors">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                    </svg>
-                                </button>
-                                <button onclick="togglePaid('${inv.id}', '${inv.status}')" title="Toggle Paid Status" class="p-2 rounded-lg transition-colors ${isPaid ? 'text-emerald-500 hover:bg-emerald-500/10' : 'text-slate-400 hover:text-emerald-500 hover:bg-emerald-500/10'}">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
-                                </button>
-                                <button onclick="deleteInvoice('${inv.id}')" class="text-slate-400 hover:text-red-500 transition-colors p-2 hover:bg-red-500/10 rounded-lg">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                </button>
+                                <button onclick="viewInvoicePDF('${inv.id}')" class="p-2 text-slate-400 hover:text-cyan-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg></button>
+                                <button onclick="togglePaid('${inv.key}', '${inv.status}')" class="p-2 ${isPaid ? 'text-emerald-500' : 'text-slate-400'} hover:text-emerald-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg></button>
+                                <button onclick="deleteInvoice('${inv.key}')" class="text-slate-400 hover:text-red-500 p-2"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
                             </td>
                         </tr>
                     `;
@@ -252,31 +232,28 @@
             }
         }
 
-        // --- LOAD DATA LOGIC ---
-        async function loadDashboardData() {
-            try {
-                const response = await fetch('http://localhost:3000/api/invoices');
-                allInvoices = await response.json();
+        // --- REAL-TIME DATA SYNC ---
+        db.ref('invoices').on('value', (snapshot) => {
+            allInvoices = [];
+            let totalRev = 0;
+            let pendingBal = 0;
+
+            snapshot.forEach((childSnapshot) => {
+                const data = childSnapshot.val();
+                const amt = parseFloat(data.amount) || 0;
                 
-                let totalRevenueValue = 0;
-                let pendingBalanceValue = 0;
-                allInvoices.forEach(inv => {
-                    const amount = parseFloat(inv.amount) || 0;
-                    totalRevenueValue += amount;
-                    if (inv.status !== 'Paid') pendingBalanceValue += amount;
-                });
+                allInvoices.push({ ...data, key: childSnapshot.key });
+                
+                totalRev += amt;
+                if (data.status !== 'Paid') pendingBal += amt;
+            });
 
-                document.getElementById('totalRevenue').textContent = `R ${totalRevenueValue.toFixed(2)}`;
-                document.getElementById('pendingBalance').textContent = `R ${pendingBalanceValue.toFixed(2)}`;
-                document.getElementById('invoiceCount').textContent = allInvoices.length;
+            document.getElementById('totalRevenue').textContent = `R ${totalRev.toFixed(2)}`;
+            document.getElementById('pendingBalance').textContent = `R ${pendingBal.toFixed(2)}`;
+            document.getElementById('invoiceCount').textContent = allInvoices.length;
 
-                renderTable(document.getElementById('searchInput').value);
-            } catch (err) {
-                console.error("Dashboard data load failed.");
-            }
-        }
-
-        loadDashboardData();
+            renderTable(document.getElementById('searchInput').value);
+        });
     </script>
 </body>
 </html>
