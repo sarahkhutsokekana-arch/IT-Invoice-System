@@ -8,13 +8,14 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <script>
         (function() {
             emailjs.init("YOUR_PUBLIC_KEY"); // Replace with your EmailJS Public Key
         })();
         tailwind.config = { darkMode: 'class' }
-    </script>
+    </style>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; transition: background-color 0.3s ease; }
@@ -172,7 +173,7 @@
             row.innerHTML = `
                 <input type="text" placeholder="Service (e.g. Cloud Setup)" value="${desc}" class="flex-1 bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-slate-900 dark:text-white outline-none service-desc">
                 <input type="number" placeholder="Amount (R)" value="${amount}" class="w-32 bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-slate-900 dark:text-white outline-none service-amount">
-                <button type="button" class="remove-item text-red-500 hover:text-red-700">Remove</button>
+                <button type="button" class="remove-item text-red-500 hover:text-red-700 font-bold px-2">×</button>
             `;
             container.appendChild(row);
             row.querySelector('.remove-item').addEventListener('click', () => row.remove());
@@ -184,34 +185,70 @@
         // Add item button listener
         document.getElementById('addItem').addEventListener('click', () => addItemRow());
 
-        async function processInvoiceAndEmail(data) {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-          
+        // Helper to generate PDF content (Table format)
+        function generatePDFContent(doc, data) {
+            // Header
             doc.setFont("helvetica", "bold");
+            doc.setFontSize(20);
             doc.text("AURABILL INVOICE", 20, 30);
+            
             doc.setFont("helvetica", "normal");
+            doc.setFontSize(12);
             doc.text(`Invoice ID: #INV-${data.id}`, 20, 45);
-            doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, 52);
+            doc.text(`Date: ${new Date(data.timestamp || Date.now()).toLocaleDateString()}`, 20, 52);
+            
+            // Client Info
+            doc.setFont("helvetica", "bold");
             doc.text("BILL TO:", 20, 70);
+            doc.setFont("helvetica", "normal");
             doc.text(data.clientName, 20, 77);
             doc.text(data.clientEmail, 20, 84);
             if (data.clientPhone) doc.text(data.clientPhone, 20, 91);
-            doc.text("SERVICES:", 20, 110);
-            let yPos = 117;
+
+            // Table for Services
+            const tableColumn = ["Description", "Amount"];
+            const tableRows = [];
+            
             data.services.forEach(service => {
-                doc.text(`${service.desc}: R ${parseFloat(service.amount).toFixed(2)}`, 20, yPos);
-                yPos += 7;
+                tableRows.push([service.desc, `R ${parseFloat(service.amount).toFixed(2)}`]);
             });
-            yPos += 7;
-            doc.text(`Subtotal: R ${parseFloat(data.subtotal).toFixed(2)}`, 20, yPos);
-            yPos += 7;
-            doc.text(`VAT (15%): R ${parseFloat(data.vat).toFixed(2)}`, 20, yPos);
-            yPos += 7;
+
+            doc.autoTable({
+                startY: 105,
+                head: [tableColumn],
+                body: tableRows,
+                theme: 'grid',
+                headStyles: { fillColor: [8, 145, 178] }, // Cyan-600
+                styles: { font: "helvetica", fontSize: 11 },
+                columnStyles: {
+                    0: { cellWidth: 'auto' },
+                    1: { cellWidth: 40, halign: 'right' }
+                }
+            });
+
+            // Totals
+            const finalY = doc.lastAutoTable.finalY + 10;
+            doc.setFontSize(11);
+            doc.text(`Subtotal:`, 140, finalY, { align: 'right' });
+            doc.text(`R ${parseFloat(data.subtotal).toFixed(2)}`, 190, finalY, { align: 'right' });
+            
+            doc.text(`VAT (15%):`, 140, finalY + 7, { align: 'right' });
+            doc.text(`R ${parseFloat(data.vat).toFixed(2)}`, 190, finalY + 7, { align: 'right' });
+
             doc.setFont("helvetica", "bold");
-            doc.text(`TOTAL: R ${parseFloat(data.total).toFixed(2)}`, 20, yPos);
+            doc.setFontSize(14);
+            doc.text(`TOTAL:`, 140, finalY + 18, { align: 'right' });
+            doc.text(`R ${parseFloat(data.total).toFixed(2)}`, 190, finalY + 18, { align: 'right' });
+        }
+
+        async function processInvoiceAndEmail(data) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            generatePDFContent(doc, data);
           
             doc.save(`Invoice_${data.id}.pdf`);
+            
             const pdfBase64 = doc.output('datauristring').split(',')[1];
             const templateParams = {
                 to_email: data.clientEmail,
@@ -222,12 +259,14 @@
             };
             return emailjs.send('YOUR_SERVICE_ID', 'YOUR_TEMPLATE_ID', templateParams);
         }
+
         document.getElementById('invoiceForm').addEventListener('submit', (e) => {
             e.preventDefault();
             const submitBtn = document.getElementById('submitBtn');
             const originalBtnText = submitBtn.textContent;
             submitBtn.textContent = "Processing...";
             submitBtn.disabled = true;
+            
             const services = [];
             let subtotal = 0;
             document.querySelectorAll('#itemsContainer > div').forEach(row => {
@@ -238,12 +277,14 @@
                     subtotal += amount;
                 }
             });
+            
             if (services.length === 0) {
                 showMessage("Add at least one service item.");
                 submitBtn.textContent = originalBtnText;
                 submitBtn.disabled = false;
                 return;
             }
+            
             const vat = subtotal * VAT_RATE;
             const total = subtotal + vat;
             const data = {
@@ -256,6 +297,7 @@
                 total,
                 timestamp: Date.now()
             };
+            
             if (editKey) {
                 data.id = allInvoices.find(inv => inv.key === editKey).id;
                 data.status = 'Sent'; // Reset to Sent on edit
@@ -316,6 +358,7 @@
                 });
             }
         });
+        
         db.ref('invoices').on('value', (snapshot) => {
             allInvoices = [];
             let totalRev = 0, pendingBal = 0;
@@ -330,149 +373,154 @@
             document.getElementById('invoiceCount').textContent = allInvoices.length;
             renderTable();
         });
+        
         function renderTable() {
             const tbody = document.getElementById('invoiceTableBody');
             tbody.innerHTML = '';
             allInvoices.forEach(inv => {
                 const dateTime = new Date(inv.timestamp).toLocaleString('en-ZA');
+                // Status Color Logic
+                let statusClass = "bg-gray-100 text-gray-800 border-gray-200";
+                if(inv.status === 'Paid') statusClass = "bg-green-100 text-green-800 border-green-200";
+                if(inv.status === 'Sent') statusClass = "bg-blue-100 text-blue-800 border-blue-200";
+
                 tbody.innerHTML += `
-                    <tr class="hover:bg-slate-100 dark:hover:bg-slate-700/30">
-                        <td class="p-4 font-mono text-cyan-500">${inv.id}</td>
+                    <tr class="hover:bg-slate-100 dark:hover:bg-slate-700/30 transition-colors">
+                        <td class="p-4 font-mono text-cyan-600 dark:text-cyan-400 font-bold">#${inv.id}</td>
                         <!-- Click client name → shows invoice template -->
                         <td onclick="viewInvoice('${inv.key}')"
-                            class="p-4 cursor-pointer hover:text-cyan-600 dark:hover:text-cyan-400 transition">
-                            <b>${inv.clientName}</b><br>
-                            <small class="text-slate-500 dark:text-slate-400">${inv.clientEmail}</small>
+                            class="p-4 cursor-pointer hover:text-cyan-600 dark:hover:text-cyan-400 transition group">
+                            <div class="font-semibold text-slate-800 dark:text-slate-200 group-hover:underline decoration-cyan-500 underline-offset-4">${inv.clientName}</div>
+                            <div class="text-xs text-slate-500 dark:text-slate-400">${inv.clientEmail}</div>
                         </td>
-                        <td class="p-4">${dateTime}</td>
-                        <td class="p-4 font-bold">R ${parseFloat(inv.total || 0).toFixed(2)}</td>
+                        <td class="p-4 text-sm text-slate-600 dark:text-slate-400">${dateTime}</td>
+                        <td class="p-4 font-bold text-slate-800 dark:text-slate-200">R ${parseFloat(inv.total || 0).toFixed(2)}</td>
                         <td class="p-4">
-                            <span class="px-2 py-1 rounded-full border text-[10px] uppercase">${inv.status}</span>
+                            <span class="px-3 py-1 rounded-full border text-[10px] font-bold uppercase tracking-wide ${statusClass}">${inv.status}</span>
                         </td>
                         <td class="p-4 text-center">
-                            <button onclick="editInvoice('${inv.key}')" class="text-blue-400 hover:text-blue-600 mr-2">Edit</button>
-                            ${inv.status === 'Sent' ? `<button onclick="markPaid('${inv.key}')" class="text-green-400 hover:text-green-600 mr-2">Mark Paid</button>` : ''}
-                            <button onclick="deleteInvoice('${inv.key}')" class="text-red-400 hover:text-red-600">Delete</button>
+                            <div class="flex justify-center gap-3">
+                                <button onclick="event.stopPropagation(); editInvoice('${inv.key}')" class="text-blue-500 hover:text-blue-700 font-medium text-sm">Edit</button>
+                                ${inv.status === 'Sent' ? `<button onclick="event.stopPropagation(); markPaid('${inv.key}')" class="text-green-500 hover:text-green-700 font-medium text-sm">Pay</button>` : ''}
+                                <button onclick="event.stopPropagation(); deleteInvoice('${inv.key}')" class="text-red-500 hover:text-red-700 font-medium text-sm">Del</button>
+                            </div>
                         </td>
                     </tr>`;
             });
         }
+        
         // ==================== Invoice Template Modal Functions ====================
         function viewInvoice(key) {
             currentInvoice = allInvoices.find(inv => inv.key === key);
             if (!currentInvoice) return;
+            
             const date = new Date(currentInvoice.timestamp || Date.now()).toLocaleString('en-ZA');
             const modalContent = document.getElementById('modalContent');
+            
             let servicesHtml = '';
             currentInvoice.services.forEach(service => {
                 servicesHtml += `
-                    <tr>
-                        <td class="py-6 text-lg">${service.desc}</td>
-                        <td class="py-6 text-right font-bold text-xl">R ${parseFloat(service.amount).toFixed(2)}</td>
+                    <tr class="border-b border-slate-100 dark:border-slate-800 last:border-0">
+                        <td class="py-3 text-slate-700 dark:text-slate-300">${service.desc}</td>
+                        <td class="py-3 text-right font-semibold text-slate-800 dark:text-slate-200">R ${parseFloat(service.amount).toFixed(2)}</td>
                     </tr>
                 `;
             });
+
             modalContent.innerHTML = `
-                <div class="space-y-8">
+                <div class="space-y-6">
                     <!-- Invoice # & Date -->
-                    <div class="flex justify-between">
+                    <div class="flex justify-between items-start">
                         <div>
-                            <div class="text-xs uppercase tracking-widest text-slate-500 dark:text-slate-400">INVOICE #</div>
-                            <div class="text-4xl font-mono font-bold text-slate-900 dark:text-white">#INV-${currentInvoice.id}</div>
+                            <div class="text-xs uppercase tracking-widest text-slate-500 dark:text-slate-400 font-semibold">Invoice Number</div>
+                            <div class="text-2xl font-mono font-bold text-slate-900 dark:text-white mt-1">#INV-${currentInvoice.id}</div>
                         </div>
                         <div class="text-right">
-                            <div class="text-xs uppercase tracking-widest text-slate-500 dark:text-slate-400">DATE</div>
-                            <div class="font-medium">${date}</div>
+                            <div class="text-xs uppercase tracking-widest text-slate-500 dark:text-slate-400 font-semibold">Date Issued</div>
+                            <div class="font-medium text-slate-700 dark:text-slate-300 mt-1">${date}</div>
                         </div>
                     </div>
+                    
                     <!-- Bill To -->
-                    <div>
-                        <div class="text-xs uppercase text-slate-500 dark:text-slate-400 mb-2">BILL TO</div>
-                        <div class="font-semibold text-xl">${currentInvoice.clientName}</div>
-                        <div class="text-slate-600 dark:text-slate-300">${currentInvoice.clientEmail}</div>
-                        ${currentInvoice.clientPhone ? `<div class="text-slate-600 dark:text-slate-300">${currentInvoice.clientPhone}</div>` : ''}
+                    <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700">
+                        <div class="text-xs uppercase text-slate-500 dark:text-slate-400 font-bold mb-2">Billed To</div>
+                        <div class="font-bold text-lg text-slate-900 dark:text-white">${currentInvoice.clientName}</div>
+                        <div class="text-slate-600 dark:text-slate-400 text-sm">${currentInvoice.clientEmail}</div>
+                        ${currentInvoice.clientPhone ? `<div class="text-slate-600 dark:text-slate-400 text-sm">${currentInvoice.clientPhone}</div>` : ''}
                     </div>
-                    <!-- Service Line -->
-                    <table class="w-full">
-                        <thead>
-                            <tr class="border-b border-slate-200 dark:border-slate-700">
-                                <th class="text-left py-3 text-xs font-medium text-slate-500 dark:text-slate-400">DESCRIPTION</th>
-                                <th class="text-right py-3 text-xs font-medium text-slate-500 dark:text-slate-400">AMOUNT</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${servicesHtml}
-                            <tr>
-                                <td class="py-6 text-lg font-medium">Subtotal</td>
-                                <td class="py-6 text-right font-medium">R ${parseFloat(currentInvoice.subtotal).toFixed(2)}</td>
-                            </tr>
-                            <tr>
-                                <td class="py-6 text-lg font-medium">VAT (15%)</td>
-                                <td class="py-6 text-right font-medium">R ${parseFloat(currentInvoice.vat).toFixed(2)}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                    <!-- Total -->
-                    <div class="flex justify-end border-t border-slate-200 dark:border-slate-700 pt-6">
-                        <div class="text-right">
-                            <div class="text-xs text-slate-500 dark:text-slate-400">TOTAL DUE</div>
-                            <div class="text-4xl font-bold text-emerald-600 dark:text-emerald-400">R ${parseFloat(currentInvoice.total).toFixed(2)}</div>
+
+                    <!-- Service Lines -->
+                    <div>
+                        <table class="w-full">
+                            <thead>
+                                <tr class="border-b border-slate-200 dark:border-slate-700">
+                                    <th class="text-left py-2 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Description</th>
+                                    <th class="text-right py-2 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Price</th>
+                                </tr>
+                            </thead>
+                            <tbody class="text-sm">
+                                ${servicesHtml}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Totals -->
+                    <div class="border-t border-slate-200 dark:border-slate-700 pt-4 space-y-2">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-slate-500 dark:text-slate-400">Subtotal</span>
+                            <span class="font-medium text-slate-800 dark:text-slate-200">R ${parseFloat(currentInvoice.subtotal).toFixed(2)}</span>
+                        </div>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-slate-500 dark:text-slate-400">VAT (15%)</span>
+                            <span class="font-medium text-slate-800 dark:text-slate-200">R ${parseFloat(currentInvoice.vat).toFixed(2)}</span>
+                        </div>
+                        <div class="flex justify-between items-center pt-2">
+                            <span class="text-slate-500 dark:text-slate-400 font-bold">Total Due</span>
+                            <span class="text-2xl font-bold text-cyan-600 dark:text-cyan-400">R ${parseFloat(currentInvoice.total).toFixed(2)}</span>
                         </div>
                     </div>
-                    <!-- Status badge -->
+
+                    <!-- Status -->
                     <div class="flex justify-end">
-                        <span class="px-6 py-1.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-xs font-medium rounded-full">
+                         <span class="px-4 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold rounded-full border border-slate-200 dark:border-slate-700 uppercase tracking-wider">
                             ${currentInvoice.status}
                         </span>
                     </div>
-                    <div class="pt-8 text-center text-xs text-slate-400 dark:text-slate-500">
-                        Thank you for your business • AuraBill IT Solutions
+                    
+                    <div class="pt-4 text-center text-xs text-slate-400 dark:text-slate-600 border-t border-slate-100 dark:border-slate-800">
+                        AuraBill IT Solutions • Thank you for your business
                     </div>
                 </div>
             `;
             document.getElementById('invoiceModal').classList.remove('hidden');
         }
+        
         function closeModal() {
             document.getElementById('invoiceModal').classList.add('hidden');
         }
+        
         function downloadCurrentInvoice() {
             if (!currentInvoice) return;
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
-            doc.setFont("helvetica", "bold");
-            doc.text("AURABILL INVOICE", 20, 30);
-            doc.setFont("helvetica", "normal");
-            doc.text(`Invoice ID: #INV-${currentInvoice.id}`, 20, 45);
-            doc.text(`Date: ${new Date(currentInvoice.timestamp || Date.now()).toLocaleDateString()}`, 20, 52);
-            doc.text("BILL TO:", 20, 70);
-            doc.text(currentInvoice.clientName, 20, 77);
-            doc.text(currentInvoice.clientEmail, 20, 84);
-            if (currentInvoice.clientPhone) doc.text(currentInvoice.clientPhone, 20, 91);
-            doc.text("SERVICES:", 20, 110);
-            let yPos = 117;
-            currentInvoice.services.forEach(service => {
-                doc.text(`${service.desc}: R ${parseFloat(service.amount).toFixed(2)}`, 20, yPos);
-                yPos += 7;
-            });
-            yPos += 7;
-            doc.text(`Subtotal: R ${parseFloat(currentInvoice.subtotal).toFixed(2)}`, 20, yPos);
-            yPos += 7;
-            doc.text(`VAT (15%): R ${parseFloat(currentInvoice.vat).toFixed(2)}`, 20, yPos);
-            yPos += 7;
-            doc.setFont("helvetica", "bold");
-            doc.text(`TOTAL: R ${parseFloat(currentInvoice.total).toFixed(2)}`, 20, yPos);
+            
+            generatePDFContent(doc, currentInvoice);
+            
             doc.save(`Invoice_${currentInvoice.id}.pdf`);
         }
+        
         function deleteInvoice(key) {
             showConfirm("Delete this invoice?", (yes) => {
                 if (yes) db.ref('invoices/' + key).remove();
             });
         }
+        
         function markPaid(key) {
             showConfirm("Mark this invoice as paid?", (yes) => {
                 if (yes) db.ref('invoices/' + key).update({status: 'Paid'});
             });
         }
+        
         function editInvoice(key) {
             const inv = allInvoices.find(i => i.key === key);
             if (!inv) return;
@@ -485,31 +533,43 @@
             inv.services.forEach(service => addItemRow(service.desc, service.amount));
             document.getElementById('submitBtn').textContent = 'Update & Email PDF';
             document.querySelector('h2.text-xl.font-semibold.mb-6').textContent = 'Edit Invoice';
+            
+            // Scroll to form on mobile
+            document.getElementById('invoiceForm').scrollIntoView({behavior: 'smooth'});
         }
+        
         function toggleTheme() {
             document.body.classList.toggle('dark');
+            const icon = document.getElementById('themeIcon');
+            icon.textContent = document.body.classList.contains('dark') ? '☀️' : '🌙';
         }
+        
         function showConfirm(message, callback) {
             document.getElementById('confirmMessage').textContent = message;
             document.getElementById('confirmModal').classList.remove('hidden');
             confirmCallback = callback;
         }
+        
         function confirmYes() {
             if (confirmCallback) confirmCallback(true);
             closeConfirm();
         }
+        
         function confirmNo() {
             if (confirmCallback) confirmCallback(false);
             closeConfirm();
         }
+        
         function closeConfirm() {
             document.getElementById('confirmModal').classList.add('hidden');
             confirmCallback = null;
         }
+        
         function showMessage(text) {
             document.getElementById('messageText').textContent = text;
             document.getElementById('messageModal').classList.remove('hidden');
         }
+        
         function closeMessage() {
             document.getElementById('messageModal').classList.add('hidden');
         }
