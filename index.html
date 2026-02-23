@@ -62,7 +62,6 @@
                     Generate, Save & Email PDF
                 </button>
             </form>
-            <p id="statusMsg" class="mt-4 text-center text-sm hidden"></p>
         </div>
         <div class="bg-slate-50 dark:bg-slate-800/80 backdrop-blur-xl p-8 rounded-2xl shadow-xl dark:shadow-2xl border border-slate-200 dark:border-slate-700/50 lg:col-span-2">
             <div class="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
@@ -115,6 +114,38 @@
             </div>
         </div>
     </div>
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-[9999]">
+        <div class="bg-white dark:bg-slate-900 max-w-md w-full mx-4 rounded-3xl overflow-hidden shadow-2xl">
+            <div class="p-8">
+                <p id="confirmMessage" class="text-center text-lg text-slate-800 dark:text-slate-200"></p>
+            </div>
+            <div class="border-t border-slate-200 dark:border-slate-700 px-8 py-6 flex gap-3 bg-slate-50 dark:bg-slate-950">
+                <button onclick="confirmNo()"
+                        class="flex-1 py-3.5 text-slate-600 dark:text-slate-400 border border-slate-300 dark:border-slate-700 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+                    No
+                </button>
+                <button onclick="confirmYes()"
+                        class="flex-1 py-3.5 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold rounded-2xl hover:brightness-110 transition">
+                    Yes
+                </button>
+            </div>
+        </div>
+    </div>
+    <!-- Message Modal -->
+    <div id="messageModal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-[9999]">
+        <div class="bg-white dark:bg-slate-900 max-w-md w-full mx-4 rounded-3xl overflow-hidden shadow-2xl">
+            <div class="p-8">
+                <p id="messageText" class="text-center text-lg text-slate-800 dark:text-slate-200"></p>
+            </div>
+            <div class="border-t border-slate-200 dark:border-slate-700 px-8 py-6 flex gap-3 bg-slate-50 dark:bg-slate-950">
+                <button onclick="closeMessage()"
+                        class="flex-1 py-3.5 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold rounded-2xl hover:brightness-110 transition">
+                    OK
+                </button>
+            </div>
+        </div>
+    </div>
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyAxBT0oESoL62oz_x_Z8cMtdENWZPx4tMI",
@@ -129,7 +160,9 @@
         const db = firebase.database();
         let allInvoices = [];
         let currentInvoice = null; // ← for modal
+        let editKey = null; // For editing mode
         const VAT_RATE = 0.15; // 15% VAT for South Africa
+        let confirmCallback = null;
 
         // Function to add a new service item row
         function addItemRow(desc = '', amount = '') {
@@ -191,13 +224,10 @@
         }
         document.getElementById('invoiceForm').addEventListener('submit', (e) => {
             e.preventDefault();
-            const statusMsg = document.getElementById('statusMsg');
             const submitBtn = document.getElementById('submitBtn');
-            statusMsg.classList.remove('hidden');
-            statusMsg.textContent = "Processing & Emailing...";
-            statusMsg.className = "mt-4 text-center text-sm text-yellow-500";
+            const originalBtnText = submitBtn.textContent;
+            submitBtn.textContent = "Processing...";
             submitBtn.disabled = true;
-            const newInvoiceRef = db.ref('invoices').push();
             const services = [];
             let subtotal = 0;
             document.querySelectorAll('#itemsContainer > div').forEach(row => {
@@ -209,15 +239,14 @@
                 }
             });
             if (services.length === 0) {
-                statusMsg.textContent = "Add at least one service item.";
-                statusMsg.className = "mt-4 text-center text-sm text-red-500";
+                showMessage("Add at least one service item.");
+                submitBtn.textContent = originalBtnText;
                 submitBtn.disabled = false;
                 return;
             }
             const vat = subtotal * VAT_RATE;
             const total = subtotal + vat;
             const data = {
-                id: newInvoiceRef.key.slice(-6).toUpperCase(),
                 clientName: document.getElementById('clientName').value,
                 clientEmail: document.getElementById('clientEmail').value,
                 clientPhone: document.getElementById('clientPhone').value,
@@ -225,35 +254,67 @@
                 subtotal,
                 vat,
                 total,
-                status: 'Sent',
                 timestamp: Date.now()
             };
-            newInvoiceRef.set(data, async (error) => {
-                if (error) {
-                    statusMsg.textContent = "Database Error.";
-                    submitBtn.disabled = false;
-                } else {
-                    try {
-                        await processInvoiceAndEmail(data);
-                        // statusMsg.textContent = "Invoice successfully sent to client!";
-                        // statusMsg.className = "mt-4 text-center text-sm text-emerald-500";
-                        document.getElementById('invoiceForm').reset();
-                        document.getElementById('itemsContainer').innerHTML = '';
-                        addItemRow();
-                        // Local update to show modal immediately
-                        const key = newInvoiceRef.key;
-                        allInvoices.push({ ...data, key });
-                        renderTable();
-                        viewInvoice(key);
-                    } catch (err) {
-                        statusMsg.textContent = "Email failed. Verify EmailJS settings.";
-                        statusMsg.className = "mt-4 text-center text-sm text-red-500";
-                        console.error("EmailJS Error:", err);
-                    } finally {
-                        submitBtn.disabled = false;
+            if (editKey) {
+                data.id = allInvoices.find(inv => inv.key === editKey).id;
+                data.status = 'Sent'; // Reset to Sent on edit
+                db.ref('invoices/' + editKey).update(data, async (error) => {
+                    if (error) {
+                        showMessage("Database Error.");
+                    } else {
+                        try {
+                            await processInvoiceAndEmail(data);
+                            showMessage("Invoice successfully sent to client!");
+                            document.getElementById('invoiceForm').reset();
+                            document.getElementById('itemsContainer').innerHTML = '';
+                            addItemRow();
+                            editKey = null;
+                            submitBtn.textContent = 'Generate, Save & Email PDF';
+                            document.querySelector('h2.text-xl.font-semibold.mb-6').textContent = 'Create New Invoice';
+                            // Local update
+                            const index = allInvoices.findIndex(inv => inv.key === editKey);
+                            if (index !== -1) {
+                                allInvoices[index] = { ...allInvoices[index], ...data };
+                                renderTable();
+                                viewInvoice(editKey);
+                            }
+                        } catch (err) {
+                            showMessage("Email failed. Verify EmailJS settings.");
+                            console.error("EmailJS Error:", err);
+                        }
                     }
-                }
-            });
+                    submitBtn.textContent = originalBtnText;
+                    submitBtn.disabled = false;
+                });
+            } else {
+                const newInvoiceRef = db.ref('invoices').push();
+                data.id = newInvoiceRef.key.slice(-6).toUpperCase();
+                data.status = 'Sent';
+                newInvoiceRef.set(data, async (error) => {
+                    if (error) {
+                        showMessage("Database Error.");
+                    } else {
+                        try {
+                            await processInvoiceAndEmail(data);
+                            showMessage("Invoice successfully sent to client!");
+                            document.getElementById('invoiceForm').reset();
+                            document.getElementById('itemsContainer').innerHTML = '';
+                            addItemRow();
+                            // Local update to show modal immediately
+                            const key = newInvoiceRef.key;
+                            allInvoices.push({ ...data, key });
+                            renderTable();
+                            viewInvoice(key);
+                        } catch (err) {
+                            showMessage("Email failed. Verify EmailJS settings.");
+                            console.error("EmailJS Error:", err);
+                        }
+                    }
+                    submitBtn.textContent = originalBtnText;
+                    submitBtn.disabled = false;
+                });
+            }
         });
         db.ref('invoices').on('value', (snapshot) => {
             allInvoices = [];
@@ -289,6 +350,7 @@
                             <span class="px-2 py-1 rounded-full border text-[10px] uppercase">${inv.status}</span>
                         </td>
                         <td class="p-4 text-center">
+                            <button onclick="editInvoice('${inv.key}')" class="text-blue-400 hover:text-blue-600 mr-2">Edit</button>
                             ${inv.status === 'Sent' ? `<button onclick="markPaid('${inv.key}')" class="text-green-400 hover:text-green-600 mr-2">Mark Paid</button>` : ''}
                             <button onclick="deleteInvoice('${inv.key}')" class="text-red-400 hover:text-red-600">Delete</button>
                         </td>
@@ -404,13 +466,54 @@
             // closeModal();
         }
         function deleteInvoice(key) {
-            if(confirm("Delete this invoice?")) db.ref('invoices/' + key).remove();
+            showConfirm("Delete this invoice?", (yes) => {
+                if (yes) db.ref('invoices/' + key).remove();
+            });
         }
         function markPaid(key) {
-            if(confirm("Mark this invoice as paid?")) db.ref('invoices/' + key).update({status: 'Paid'});
+            showConfirm("Mark this invoice as paid?", (yes) => {
+                if (yes) db.ref('invoices/' + key).update({status: 'Paid'});
+            });
+        }
+        function editInvoice(key) {
+            const inv = allInvoices.find(i => i.key === key);
+            if (!inv) return;
+            editKey = key;
+            document.getElementById('clientName').value = inv.clientName;
+            document.getElementById('clientEmail').value = inv.clientEmail;
+            document.getElementById('clientPhone').value = inv.clientPhone;
+            const itemsContainer = document.getElementById('itemsContainer');
+            itemsContainer.innerHTML = '';
+            inv.services.forEach(service => addItemRow(service.desc, service.amount));
+            document.getElementById('submitBtn').textContent = 'Update & Email PDF';
+            document.querySelector('h2.text-xl.font-semibold.mb-6').textContent = 'Edit Invoice';
         }
         function toggleTheme() {
             document.body.classList.toggle('dark');
+        }
+        function showConfirm(message, callback) {
+            document.getElementById('confirmMessage').textContent = message;
+            document.getElementById('confirmModal').classList.remove('hidden');
+            confirmCallback = callback;
+        }
+        function confirmYes() {
+            if (confirmCallback) confirmCallback(true);
+            closeConfirm();
+        }
+        function confirmNo() {
+            if (confirmCallback) confirmCallback(false);
+            closeConfirm();
+        }
+        function closeConfirm() {
+            document.getElementById('confirmModal').classList.add('hidden');
+            confirmCallback = null;
+        }
+        function showMessage(text) {
+            document.getElementById('messageText').textContent = text;
+            document.getElementById('messageModal').classList.remove('hidden');
+        }
+        function closeMessage() {
+            document.getElementById('messageModal').classList.add('hidden');
         }
     </script>
 </body>
