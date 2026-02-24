@@ -50,20 +50,21 @@
     </div>
 
     <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div class="bg-slate-50 dark:bg-slate-800/80 backdrop-blur-xl p-8 rounded-2xl shadow-xl dark:shadow-2xl border border-slate-200 dark:border-slate-700/50 lg:col-span-1 h-fit">
-            <h2 class="text-xl font-semibold mb-6 text-slate-800 dark:text-white">Create New Invoice</h2>
-            <form id="invoiceForm" class="space-y-5">
-                <input type="text" id="clientName" placeholder="Client Name" required class="w-full bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-slate-900 dark:text-white outline-none">
-                <input type="email" id="clientEmail" placeholder="Client Email" required class="w-full bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-slate-900 dark:text-white outline-none">
-                <input type="tel" id="clientPhone" placeholder="Phone Number" required class="w-full bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-slate-900 dark:text-white outline-none">
+        <!-- MODIFIED: Create New Invoice Card - Adjusted padding and spacing for better fit -->
+        <div class="bg-slate-50 dark:bg-slate-800/80 backdrop-blur-xl p-6 rounded-2xl shadow-xl dark:shadow-2xl border border-slate-200 dark:border-slate-700/50 lg:col-span-1 h-fit">
+            <h2 class="text-lg font-semibold mb-4 text-slate-800 dark:text-white">Create New Invoice</h2>
+            <form id="invoiceForm" class="space-y-3">
+                <input type="text" id="clientName" placeholder="Client Name" required class="w-full bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-white outline-none">
+                <input type="email" id="clientEmail" placeholder="Client Email" required class="w-full bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-white outline-none">
+                <input type="tel" id="clientPhone" placeholder="Phone Number" required class="w-full bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-white outline-none">
 
-                <div class="text-sm font-medium text-slate-800 dark:text-white">Services</div>
-                <div id="itemsContainer" class="space-y-4"></div>
+                <div class="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mt-2 mb-1">Services</div>
+                <div id="itemsContainer" class="space-y-2 max-h-48 overflow-y-auto pr-1"></div>
 
-                <button type="button" id="addItem" class="w-full bg-blue-500 hover:bg-blue-400 text-white font-bold py-2 rounded-lg transition-all shadow-lg shadow-blue-500/20">
-                    Add Service Item
+                <button type="button" id="addItem" class="w-full bg-blue-500 hover:bg-blue-400 text-white text-sm font-bold py-2 rounded-lg transition-all shadow-lg shadow-blue-500/20">
+                    + Add Service
                 </button>
-                <button type="submit" id="submitBtn" class="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold py-3 rounded-lg transition-all shadow-lg shadow-cyan-500/20">
+                <button type="submit" id="submitBtn" class="w-full bg-cyan-500 hover:bg-cyan-400 text-slate-900 text-sm font-bold py-2.5 rounded-lg transition-all shadow-lg shadow-cyan-500/20">
                     Generate, Save & Email PDF
                 </button>
             </form>
@@ -167,20 +168,21 @@
 
         let confirmCallback = null;
 
-        function addItemRow(desc = '', amount = '') {
+        // MODIFIED: Service Item Row - More compact layout
+        function addItemRow(desc = '', qty = 1, price = '') {
             const container = document.getElementById('itemsContainer');
             const row = document.createElement('div');
-            row.className = 'flex space-x-3 items-center bg-slate-100 dark:bg-slate-800/50 p-3 rounded-lg';
+            row.className = 'bg-slate-100 dark:bg-slate-800/50 p-2 rounded-lg border border-slate-200 dark:border-slate-700';
             row.innerHTML = `
-                <input type="text" placeholder="Service description" 
-                       value="${desc}" 
-                       class="flex-1 bg-white dark:bg-slate-900/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-slate-900 dark:text-white outline-none service-desc">
-                <input type="number" placeholder="Amount" step="0.01" min="0"
-                       value="${amount}" 
-                       class="w-36 bg-white dark:bg-slate-900/60 border border-slate-300 dark:border-slate-600 rounded-lg p-2.5 text-slate-900 dark:text-white outline-none service-amount">
-                <button type="button" class="remove-item px-3 py-2 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-800/60 transition font-medium">
-                    Delete
-                </button>
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-[10px] font-bold text-slate-500 uppercase">Service</span>
+                    <button type="button" class="remove-item text-[10px] px-2 py-0.5 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded hover:bg-red-200 transition">Remove</button>
+                </div>
+                <input type="text" placeholder="Description" value="${desc}" class="w-full mb-1 bg-white dark:bg-slate-900/60 border border-slate-300 dark:border-slate-600 rounded px-2 py-1 text-xs text-slate-900 dark:text-white outline-none service-desc">
+                <div class="flex space-x-2">
+                    <input type="number" placeholder="Qty" min="1" value="${qty}" class="w-16 bg-white dark:bg-slate-900/60 border border-slate-300 dark:border-slate-600 rounded px-2 py-1 text-xs text-slate-900 dark:text-white outline-none service-qty">
+                    <input type="number" placeholder="Price" step="0.01" min="0" value="${price}" class="flex-1 bg-white dark:bg-slate-900/60 border border-slate-300 dark:border-slate-600 rounded px-2 py-1 text-xs text-slate-900 dark:text-white outline-none service-price">
+                </div>
             `;
             container.appendChild(row);
             row.querySelector('.remove-item').addEventListener('click', () => row.remove());
@@ -189,6 +191,7 @@
         addItemRow();
         document.getElementById('addItem').addEventListener('click', () => addItemRow());
 
+        // MODIFIED: PDF Generation to include Quantity
         async function processInvoiceAndEmail(data) {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
@@ -208,33 +211,44 @@
             doc.text(data.clientEmail, 20, 84);
             if (data.clientPhone) doc.text(data.clientPhone, 20, 90);
             doc.setFont("helvetica", "bold");
+            
+            // MODIFIED: Table headers with QTY
             doc.text("DESCRIPTION", 20, 110);
-            doc.text("AMOUNT", 170, 110, { align: "right" });
+            doc.text("QTY", 110, 110, { align: "center" });
+            doc.text("PRICE", 150, 110, { align: "right" });
+            doc.text("TOTAL", 190, 110, { align: "right" });
+            
             doc.setLineWidth(0.5);
             doc.line(20, 112, 190, 112);
             let yPos = 122;
             doc.setFont("helvetica", "normal");
+            
             data.services.forEach(service => {
-                doc.text(service.desc, 20, yPos);
-                doc.text(`R ${parseFloat(service.amount).toFixed(2)}`, 170, yPos, { align: "right" });
+                const lineTotal = (service.qty || 1) * parseFloat(service.price || service.amount);
+                doc.text(service.desc.substring(0, 40), 20, yPos); // Truncate long descriptions
+                doc.text(`${service.qty || 1}`, 110, yPos, { align: "center" });
+                doc.text(`R ${parseFloat(service.price || service.amount).toFixed(2)}`, 150, yPos, { align: "right" });
+                doc.text(`R ${lineTotal.toFixed(2)}`, 190, yPos, { align: "right" });
                 yPos += 8;
             });
+            
             yPos += 5;
             doc.line(20, yPos - 2, 190, yPos - 2);
             doc.text("Subtotal:", 130, yPos);
-            doc.text(`R ${parseFloat(data.subtotal).toFixed(2)}`, 170, yPos, { align: "right" });
+            doc.text(`R ${parseFloat(data.subtotal).toFixed(2)}`, 190, yPos, { align: "right" });
             yPos += 8;
             doc.text("VAT (15%):", 130, yPos);
-            doc.text(`R ${parseFloat(data.vat).toFixed(2)}`, 170, yPos, { align: "right" });
+            doc.text(`R ${parseFloat(data.vat).toFixed(2)}`, 190, yPos, { align: "right" });
             yPos += 10;
             doc.setFont("helvetica", "bold");
             doc.setFontSize(13);
             doc.text("TOTAL DUE:", 130, yPos);
-            doc.text(`R ${parseFloat(data.total).toFixed(2)}`, 170, yPos, { align: "right" });
+            doc.text(`R ${parseFloat(data.total).toFixed(2)}`, 190, yPos, { align: "right" });
             doc.setFontSize(9);
             doc.setFont("helvetica", "normal");
             doc.text("Thank you for your business • AuraBill IT Solutions", 20, 280);
             doc.save(`Invoice_${data.id}.pdf`);
+            
             const pdfBase64 = doc.output('datauristring').split(',')[1];
             const templateParams = {
                 to_email: data.clientEmail,
@@ -246,6 +260,7 @@
             return emailjs.send('YOUR_SERVICE_ID', 'YOUR_TEMPLATE_ID', templateParams);
         }
 
+        // MODIFIED: Form submission to handle qty and price
         document.getElementById('invoiceForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const submitBtn = document.getElementById('submitBtn');
@@ -254,20 +269,25 @@
             submitBtn.disabled = true;
             const services = [];
             let subtotal = 0;
+            
             document.querySelectorAll('#itemsContainer > div').forEach(row => {
                 const desc = row.querySelector('.service-desc').value.trim();
-                const amount = parseFloat(row.querySelector('.service-amount').value) || 0;
-                if (desc && amount > 0) {
-                    services.push({ desc, amount });
-                    subtotal += amount;
+                const qty = parseInt(row.querySelector('.service-qty').value) || 1;
+                const price = parseFloat(row.querySelector('.service-price').value) || 0;
+                
+                if (desc && price > 0) {
+                    services.push({ desc, qty, price });
+                    subtotal += (qty * price);
                 }
             });
+            
             if (services.length === 0) {
                 showMessage("Please add at least one service item.");
                 submitBtn.textContent = originalText;
                 submitBtn.disabled = false;
                 return;
             }
+            
             const vat = subtotal * VAT_RATE;
             const total = subtotal + vat;
             const data = {
@@ -278,6 +298,7 @@
                 timestamp: Date.now(),
                 status: 'Sent'
             };
+            
             try {
                 if (editKey) {
                     data.id = allInvoices.find(inv => inv.key === editKey).id;
@@ -309,7 +330,7 @@
             document.getElementById('itemsContainer').innerHTML = '';
             addItemRow();
             document.getElementById('submitBtn').textContent = 'Generate, Save & Email PDF';
-            document.querySelector('h2.text-xl.font-semibold.mb-6').textContent = 'Create New Invoice';
+            document.querySelector('h2.text-lg.font-semibold.mb-4').textContent = 'Create New Invoice';
         }
 
         db.ref('invoices').on('value', (snapshot) => {
@@ -356,9 +377,7 @@
             });
         }
 
-        // ────────────────────────────────────────────────
-        //  MODIFIED: View Invoice Template Logic
-        // ────────────────────────────────────────────────
+        // MODIFIED: View Invoice Modal to include Quantity
         function viewInvoice(key) {
             currentInvoice = allInvoices.find(inv => inv.key === key);
             if (!currentInvoice) return;
@@ -367,15 +386,18 @@
             let servicesHtml = '';
 
             currentInvoice.services.forEach(s => {
+                const lineTotal = (s.qty || 1) * parseFloat(s.price || s.amount);
                 servicesHtml += `
                     <tr class="border-b border-slate-100 dark:border-slate-800">
-                        <td class="py-4 text-slate-700 dark:text-slate-300">${s.desc}</td>
-                        <td class="py-4 text-right font-medium">R ${parseFloat(s.amount).toFixed(2)}</td>
+                        <td class="py-3 text-slate-700 dark:text-slate-300 text-sm">${s.desc}</td>
+                        <td class="py-3 text-center text-slate-500 dark:text-slate-400 text-sm">${s.qty || 1}</td>
+                        <td class="py-3 text-right font-medium text-sm">R ${parseFloat(s.price || s.amount).toFixed(2)}</td>
+                        <td class="py-3 text-right font-bold text-slate-800 dark:text-slate-200 text-sm">R ${lineTotal.toFixed(2)}</td>
                     </tr>`;
             });
 
             document.getElementById('modalContent').innerHTML = `
-                <div class="space-y-8">
+                <div class="space-y-6">
                     <div class="flex justify-between items-start">
                         <div>
                             <div class="text-xs uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1">INVOICE NUMBER</div>
@@ -406,7 +428,9 @@
                         <thead>
                             <tr class="border-b-2 border-slate-200 dark:border-slate-700">
                                 <th class="text-left py-3 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-tighter">Description</th>
-                                <th class="text-right py-3 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-tighter">Amount</th>
+                                <th class="text-center py-3 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-tighter w-20">Qty</th>
+                                <th class="text-right py-3 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-tighter">Unit Price</th>
+                                <th class="text-right py-3 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-tighter">Total</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -416,11 +440,11 @@
 
                     <div class="flex justify-end pt-4">
                         <div class="w-full max-w-xs space-y-3">
-                            <div class="flex justify-between text-slate-600 dark:text-slate-400">
+                            <div class="flex justify-between text-slate-600 dark:text-slate-400 text-sm">
                                 <span>Subtotal</span>
                                 <span>R ${parseFloat(currentInvoice.subtotal).toFixed(2)}</span>
                             </div>
-                            <div class="flex justify-between text-slate-600 dark:text-slate-400">
+                            <div class="flex justify-between text-slate-600 dark:text-slate-400 text-sm">
                                 <span>VAT (15%)</span>
                                 <span>R ${parseFloat(currentInvoice.vat).toFixed(2)}</span>
                             </div>
@@ -431,7 +455,7 @@
                         </div>
                     </div>
 
-                    <div class="pt-12 text-center text-xs text-slate-400 dark:text-slate-500 border-t border-dashed border-slate-200 dark:border-slate-800">
+                    <div class="pt-8 text-center text-xs text-slate-400 dark:text-slate-500 border-t border-dashed border-slate-200 dark:border-slate-800">
                         Thank you for choosing AuraBill IT Solutions. Payment is due within 30 days.
                     </div>
                 </div>
@@ -449,6 +473,7 @@
             processInvoiceAndEmail(currentInvoice).catch(err => console.error(err));
         }
 
+        // MODIFIED: Edit Invoice to populate qty and price
         function editInvoice(key) {
             const inv = allInvoices.find(i => i.key === key);
             if (!inv) return;
@@ -458,9 +483,9 @@
             document.getElementById('clientPhone').value = inv.clientPhone || '';
             const container = document.getElementById('itemsContainer');
             container.innerHTML = '';
-            inv.services.forEach(s => addItemRow(s.desc, s.amount));
+            inv.services.forEach(s => addItemRow(s.desc, s.qty || 1, s.price || s.amount));
             document.getElementById('submitBtn').textContent = 'Update & Email PDF';
-            document.querySelector('h2.text-xl.font-semibold.mb-6').textContent = 'Edit Invoice';
+            document.querySelector('h2.text-lg.font-semibold.mb-4').textContent = 'Edit Invoice';
         }
 
         function deleteInvoice(key) {
