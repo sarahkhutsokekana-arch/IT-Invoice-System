@@ -8,6 +8,8 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- Added jsPDF-AutoTable Plugin -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <script>
         (function() {
@@ -191,64 +193,124 @@
         addItemRow();
         document.getElementById('addItem').addEventListener('click', () => addItemRow());
 
-        // MODIFIED: PDF Generation to include Quantity
+        // MODIFIED: PDF Generation using AutoTable for professional layout
         async function processInvoiceAndEmail(data) {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
+
+            // --- Header Section ---
+            doc.setFillColor(8, 145, 178); // Cyan-600
+            doc.rect(0, 0, 210, 40, 'F');
+            
+            doc.setTextColor(255, 255, 255);
             doc.setFont("helvetica", "bold");
-            doc.setFontSize(22);
-            doc.text("AURABILL", 20, 25);
+            doc.setFontSize(24);
+            doc.text("AURABILL", 14, 25);
+            
             doc.setFontSize(10);
             doc.setFont("helvetica", "normal");
-            doc.text("INVOICE", 20, 32);
+            doc.text("IT SOLUTIONS INVOICE", 14, 32);
+
+            // --- Invoice Meta & Client Info ---
+            doc.setTextColor(60, 60, 60);
+            doc.setFontSize(10);
+            
+            // Right side meta info
+            doc.text(`Invoice #: INV-${data.id}`, 150, 20, { align: "right" });
+            doc.text(`Date: ${new Date().toLocaleDateString('en-ZA')}`, 150, 26, { align: "right" });
+            doc.text(`Status: ${data.status}`, 150, 32, { align: "right" });
+
+            // Client Info Box
+            doc.setFillColor(240, 240, 240);
+            doc.roundedRect(14, 50, 90, 35, 3, 3, 'F');
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(8, 145, 178);
+            doc.text("BILL TO:", 18, 58);
+            doc.setTextColor(40, 40, 40);
             doc.setFontSize(11);
-            doc.text(`Invoice ID: #INV-${data.id}`, 20, 45);
-            doc.text(`Date: ${new Date().toLocaleDateString('en-ZA')}`, 20, 52);
-            doc.text("BILL TO:", 20, 70);
-            doc.setFont("helvetica", "bold");
-            doc.text(data.clientName, 20, 78);
+            doc.text(data.clientName, 18, 66);
             doc.setFont("helvetica", "normal");
-            doc.text(data.clientEmail, 20, 84);
-            if (data.clientPhone) doc.text(data.clientPhone, 20, 90);
-            doc.setFont("helvetica", "bold");
-            
-            // MODIFIED: Table headers with QTY
-            doc.text("DESCRIPTION", 20, 110);
-            doc.text("QTY", 110, 110, { align: "center" });
-            doc.text("PRICE", 150, 110, { align: "right" });
-            doc.text("TOTAL", 190, 110, { align: "right" });
-            
-            doc.setLineWidth(0.5);
-            doc.line(20, 112, 190, 112);
-            let yPos = 122;
-            doc.setFont("helvetica", "normal");
-            
-            data.services.forEach(service => {
-                const lineTotal = (service.qty || 1) * parseFloat(service.price || service.amount);
-                doc.text(service.desc.substring(0, 40), 20, yPos); // Truncate long descriptions
-                doc.text(`${service.qty || 1}`, 110, yPos, { align: "center" });
-                doc.text(`R ${parseFloat(service.price || service.amount).toFixed(2)}`, 150, yPos, { align: "right" });
-                doc.text(`R ${lineTotal.toFixed(2)}`, 190, yPos, { align: "right" });
-                yPos += 8;
-            });
-            
-            yPos += 5;
-            doc.line(20, yPos - 2, 190, yPos - 2);
-            doc.text("Subtotal:", 130, yPos);
-            doc.text(`R ${parseFloat(data.subtotal).toFixed(2)}`, 190, yPos, { align: "right" });
-            yPos += 8;
-            doc.text("VAT (15%):", 130, yPos);
-            doc.text(`R ${parseFloat(data.vat).toFixed(2)}`, 190, yPos, { align: "right" });
-            yPos += 10;
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(13);
-            doc.text("TOTAL DUE:", 130, yPos);
-            doc.text(`R ${parseFloat(data.total).toFixed(2)}`, 190, yPos, { align: "right" });
             doc.setFontSize(9);
+            doc.text(data.clientEmail, 18, 73);
+            if(data.clientPhone) doc.text(data.clientPhone, 18, 79);
+
+            // --- Services Table using AutoTable ---
+            const tableBody = data.services.map((service, index) => {
+                const lineTotal = (service.qty || 1) * parseFloat(service.price || 0);
+                return [
+                    index + 1,
+                    service.desc,
+                    service.qty || 1,
+                    `R ${parseFloat(service.price || 0).toFixed(2)}`,
+                    `R ${lineTotal.toFixed(2)}`
+                ];
+            });
+
+            doc.autoTable({
+                startY: 95,
+                head: [['#', 'Description', 'Qty', 'Unit Price', 'Total']],
+                body: tableBody,
+                theme: 'grid',
+                headStyles: {
+                    fillColor: [30, 41, 59], // Slate-800
+                    textColor: [255, 255, 255],
+                    fontStyle: 'bold',
+                    halign: 'center'
+                },
+                bodyStyles: {
+                    textColor: [50, 50, 50],
+                    fontSize: 10
+                },
+                columnStyles: {
+                    0: { cellWidth: 10, halign: 'center' },
+                    1: { cellWidth: 'auto', halign: 'left' },
+                    2: { cellWidth: 20, halign: 'center' },
+                    3: { cellWidth: 35, halign: 'right' },
+                    4: { cellWidth: 35, halign: 'right', fontStyle: 'bold' }
+                },
+                styles: {
+                    lineColor: [200, 200, 200],
+                    lineWidth: 0.1,
+                    cellPadding: 3
+                },
+                alternateRowStyles: {
+                    fillColor: [248, 250, 252] // Slate-50
+                }
+            });
+
+            // --- Totals Section ---
+            const finalY = doc.lastAutoTable.finalY + 10;
+            
+            doc.setFontSize(10);
+            doc.setTextColor(80, 80, 80);
+            
+            // Draw totals box on the right
+            const totalsX = 120;
+            doc.text("Subtotal:", totalsX, finalY);
+            doc.text(`R ${parseFloat(data.subtotal).toFixed(2)}`, 195, finalY, { align: "right" });
+            
+            doc.text("VAT (15%):", totalsX, finalY + 7);
+            doc.text(`R ${parseFloat(data.vat).toFixed(2)}`, 195, finalY + 7, { align: "right" });
+            
+            doc.setDrawColor(200, 200, 200);
+            doc.line(totalsX, finalY + 12, 195, finalY + 12);
+            
+            doc.setFont("helvetica", "bold");
+            doc.setTextColor(8, 145, 178); // Cyan
+            doc.setFontSize(14);
+            doc.text("TOTAL DUE:", totalsX, finalY + 22);
+            doc.text(`R ${parseFloat(data.total).toFixed(2)}`, 195, finalY + 22, { align: "right" });
+
+            // --- Footer ---
             doc.setFont("helvetica", "normal");
-            doc.text("Thank you for your business • AuraBill IT Solutions", 20, 280);
+            doc.setFontSize(9);
+            doc.setTextColor(150, 150, 150);
+            doc.text("Thank you for your business • AuraBill IT Solutions • Payment due within 30 days", 105, 285, { align: "center" });
+
+            // Save PDF
             doc.save(`Invoice_${data.id}.pdf`);
             
+            // Email Logic (unchanged)
             const pdfBase64 = doc.output('datauristring').split(',')[1];
             const templateParams = {
                 to_email: data.clientEmail,
